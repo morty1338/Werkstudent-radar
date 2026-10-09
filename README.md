@@ -3,6 +3,8 @@
 [![Daily data update](https://github.com/morty1338/werkstudent-radar/actions/workflows/daily.yml/badge.svg)](https://github.com/morty1338/werkstudent-radar/actions/workflows/daily.yml)
 [![Tests](https://github.com/morty1338/werkstudent-radar/actions/workflows/tests.yml/badge.svg)](https://github.com/morty1338/werkstudent-radar/actions/workflows/tests.yml)
 
+[![Today's numbers](docs/data/og.png)](https://morty1338.github.io/werkstudent-radar/)
+
 The German working-student job market in numbers: real hourly rates, which
 skills are in demand, and how many jobs you can get without speaking German.
 
@@ -106,6 +108,7 @@ Outputs:
 | `docs/data/checker.json` | per posting: field, city, German level, pay and skill indices, for the in-browser skill checker |
 | `docs/data/postings.json` | title, company, city and date for the same postings in the same order; loaded only when someone opens the list of matching postings |
 | `docs/data/history.json` | daily series built from `data/history.csv` |
+| `docs/data/og.png` | link preview image with today's numbers (shown by Telegram, WhatsApp, LinkedIn; also at the top of this README) |
 | `data/history.csv` | one row per day × metric (`total`, `category`, `city`, `skill`, `major`, `german`). Which postings were online on a given day can't be reconstructed later, so this is collected from day one. |
 
 ## Automation
@@ -190,6 +193,7 @@ radar/enrich.py    fetch texts for new postings, extract features -> data/jobs.c
 radar/extract.py   feature extraction rules
 radar/skills.py    skill dictionary (German + English synonyms)
 radar/build.py     load jobs.csv into SQLite, run radar/sql/*.sql, write JSON
+radar/og_image.py  link preview image with today's numbers
 radar/sql/         schema and one query per output
 radar/evaluate.py  accuracy check against labelled postings
 eval/label.html    blind labelling form
