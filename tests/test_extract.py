@@ -153,6 +153,8 @@ def test_majors_wirtschaftsinformatik_is_not_informatik():
     ("Werkstudent (m/w/d)", "Helfer/in - Verkauf", "retail"),
     ("Werkstudent Controlling (m/w/d)", "", "finance"),
     ("Werkstudent:in HR / Recruiting", "", "hr"),
+    ("Werkstudent Kundenberatung & Fahrzeugankauf (m/w/d)", "Fachverkäufer/in - Kraftfahrzeuge", "sales"),
+    ("Werkstudent Consulting & Strategy", "", "consulting"),
 ])
 def test_classify(title, beruf, expected):
     assert classify(title, beruf) == expected

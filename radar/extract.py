@@ -10,7 +10,7 @@ from .skills import CONTEXT_REQUIRED, SKILLS
 
 # Bump whenever skills.py or the rules below change. Active jobs tagged with an
 # older version are re-fetched and re-tagged on the next run.
-EXTRACTOR_VERSION = 1
+EXTRACTOR_VERSION = 2
 
 _FLAGS = re.IGNORECASE
 
@@ -285,8 +285,8 @@ CATEGORIES = [
     ("finance", "Finance & Controlling", r"financ|finanz|controlling|accounting|buchhalt|bilanz|rechnungswesen|steuer|\btax\b|audit|prüfung|treasury|wirtschaftsprüf|bank|investment|private equity|m&a|corporate finance|risk"),
     ("marketing", "Marketing & Communication", r"marketing|social media|content|kommunikation|communication|\bpr\b|presse|seo|brand|redaktion|editor|e-commerce|ecommerce|online.?shop|community|influencer|events?\b|eventmanagement"),
     ("retail", "Retail & Hospitality", r"verkäuf|verkauf|einzelhandel|kassier|kasse|filial|\bstore\b|shop assistant|gastronom|hotel|restaurant|kellner|barista|küche|service-?kraft|servicemitarbeit|lagerhelfer|kommissionier|aushilfe"),
-    ("sales", "Sales & Business Development", r"sales|vertrieb|business development|key account|account manag|customer success|kundenbetreuung|kundenservice|customer service|innendienst"),
-    ("consulting", "Consulting & Strategy", r"consult|beratung|strateg|inhouse consult"),
+    ("sales", "Sales & Business Development", r"sales|vertrieb|business development|key account|account manag|customer success|kundenbetreuung|kundenberatung|kundenservice|customer service|innendienst|ankauf"),
+    ("consulting", "Consulting & Strategy", r"consult|unternehmensberat|strategieberat|managementberat|it-beratung|steuerberat|beratung|strateg"),
     ("product", "Product & Project Mgmt", r"project|projekt|product manag|produktmanag|product owner|pmo|programm.?manag"),
     ("design", "Design & UX", r"design(?!.{0,10}engineer)|\bux\b|\bui\b|grafik|graphic|video|foto|photo|medien(?:gestalt|produkt)"),
     ("engineering", "Engineering & Production", r"ingenieur|engineering|konstruktion|mechani|elektro|electr|maschinenbau|produktion|production|qualität|quality|fertigung|automotive|fahrzeug|vehicle|hardware|embedded|energie|energy|bau|architekt|statik|statiker|technik|technisch|technical|anlagen|maschinen|simulation|test(?:ing)?\b|r&d|forschung und entwicklung|verfahrenstechn|robot"),
