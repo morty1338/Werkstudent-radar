@@ -8,6 +8,7 @@ runs the queries in sql/*.sql and writes:
 
     docs/data/summary.json   headline numbers, pay, German, fields, cities, skills, majors
     docs/data/checker.json   compact per-job skill lists for the in-browser skill checker
+    docs/data/postings.json  title, company and city per checker job (loaded on demand)
     docs/data/history.json   daily time series for the trend charts
     data/history.csv         today's snapshot appended (one row per metric and day)
 
@@ -241,7 +242,12 @@ def insights(totals, categories, cities, skills):
 
 
 def build_checker(db, summary):
-    """Compact job list for the skill checker: indices instead of repeated strings."""
+    """Compact job list for the skill checker: indices instead of repeated strings.
+
+    Returns (checker, postings). postings.json holds the display fields for the
+    same jobs in the same order; it's larger, so the site only loads it when
+    someone opens the list of matching postings.
+    """
     skills = [s for s in summary["skills"] if s["jobs"] >= MIN_CHECKER_SKILL_JOBS]
     skill_idx = {s["id"]: i for i, s in enumerate(skills)}
     cats = [c["key"] for c in summary["categories"]]
@@ -250,7 +256,7 @@ def build_checker(db, summary):
     city_idx = {k: i for i, k in enumerate(cities)}
     german_codes = ["none", "plus", "implicit", "required"]
 
-    jobs = []
+    jobs, rows = [], []
     for r in query(db, "checker_jobs"):
         ids = sorted(skill_idx[s] for s in (r["skills"] or "").split("|") if s in skill_idx)
         jobs.append([
@@ -260,7 +266,8 @@ def build_checker(db, summary):
             r["pay"],
             ids,
         ])
-    return {
+        rows.append([r["refnr"], r["title"], r["company"], r["city"], r["published"]])
+    checker = {
         "as_of": summary["as_of"],
         "fields": ["category", "city", "german", "pay", "skills"],
         "skills": [{"id": s["id"], "label": s["label"], "group": s["group"], "jobs": s["jobs"]} for s in skills],
@@ -269,6 +276,13 @@ def build_checker(db, summary):
         "german": german_codes,
         "jobs": jobs,
     }
+    postings = {
+        "as_of": summary["as_of"],
+        "url": JOB_URL,
+        "fields": ["refnr", "title", "company", "city", "published"],
+        "rows": rows,
+    }
+    return checker, postings
 
 
 def update_history(db, as_of, path=HISTORY_CSV):
@@ -314,10 +328,11 @@ def write_json(name, data):
 def main():
     db = load_db()
     summary = build_summary(db)
-    checker = build_checker(db, summary)
+    checker, postings = build_checker(db, summary)
     history = build_history(update_history(db, summary["as_of"]))
 
-    for name, data in [("summary.json", summary), ("checker.json", checker), ("history.json", history)]:
+    outputs = [("summary.json", summary), ("checker.json", checker), ("postings.json", postings), ("history.json", history)]
+    for name, data in outputs:
         path = write_json(name, data)
         print(f"wrote {os.path.relpath(path, ROOT)} ({os.path.getsize(path) / 1024:.0f} KB)")
 

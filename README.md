@@ -15,7 +15,7 @@ Only Werkstudent postings in Germany are collected.
 - **Pay**: median hourly rate by field and city, from the rates stated in postings
 - **German**: how many postings are open to non-German speakers, with the full list
 - **Skills**: what's asked for, by field and city, and which skills come with higher pay
-- **Check your skills**: tick what you can do, see the share of postings you match and which skill opens the most new ones
+- **Check your skills**: tick what you can do, see the share of postings you match, which skill opens the most new ones, and the matching postings themselves (plus those one skill away)
 - **Study programmes**: Wirtschaftsinformatik, Informatik, BWL, Wirtschaftsingenieurwesen and more
 - **Trends**: daily snapshots from 9 Oct 2026 on
 
@@ -104,6 +104,7 @@ Outputs:
 |------|---------|
 | `docs/data/summary.json` | totals, German requirements, pay histogram, fields, cities, skills, study programmes (with example postings), all postings open to non-German speakers, headline insights |
 | `docs/data/checker.json` | per posting: field, city, German level, pay and skill indices, for the in-browser skill checker |
+| `docs/data/postings.json` | title, company, city and date for the same postings in the same order; loaded only when someone opens the list of matching postings |
 | `docs/data/history.json` | daily series built from `data/history.csv` |
 | `data/history.csv` | one row per day × metric (`total`, `category`, `city`, `skill`, `major`, `german`). Which postings were online on a given day can't be reconstructed later, so this is collected from day one. |
 

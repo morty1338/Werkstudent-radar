@@ -105,10 +105,16 @@ def test_checker_uses_indices(db):
                "categories": build.query(db, "categories"), "cities": build.query(db, "cities", min_jobs=1)}
     build.MIN_CHECKER_SKILL_JOBS, saved = 1, build.MIN_CHECKER_SKILL_JOBS
     try:
-        checker = build.build_checker(db, summary)
+        checker, postings = build.build_checker(db, summary)
     finally:
         build.MIN_CHECKER_SKILL_JOBS = saved
     assert len(checker["jobs"]) == 6
+    # postings.json is matched to checker.json by position
+    assert len(postings["rows"]) == len(checker["jobs"])
+    refs = [row[0] for row in postings["rows"]]
+    assert refs == sorted(refs)
+    pay_by_ref = {row[0]: job[3] for row, job in zip(postings["rows"], checker["jobs"])}
+    assert pay_by_ref["c"] == 20.0 and pay_by_ref["d2"] == 13.0
     skill_ids = [s["id"] for s in checker["skills"]]
     job_a = next(j for j in checker["jobs"] if j[3] == 15.0)
     assert sorted(skill_ids[i] for i in job_a[4]) == ["python", "sql"]
