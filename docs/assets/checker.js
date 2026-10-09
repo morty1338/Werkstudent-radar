@@ -14,9 +14,11 @@ const GROUP_ORDER = [
 ];
 const POPULAR_COUNT = 36;
 const MIN_PAY_FOR_MEDIAN = 10;
+const LIST_PAGE = 20;
 
 export function initChecker(data, labels) {
   const { jobs, skills, categories, cities } = data;
+  const data_as_of = data.as_of;
   const idxById = new Map(skills.map((s, i) => [s.id, i]));
   const popular = new Set(
     skills.map((s, i) => [s.jobs, i]).sort((a, b) => b[0] - a[0]).slice(0, POPULAR_COUNT).map(([, i]) => i),
@@ -35,7 +37,13 @@ export function initChecker(data, labels) {
     clear: document.getElementById("ck-clear"),
     share: document.getElementById("ck-share"),
     mini: document.getElementById("ck-mini"),
+    list: document.getElementById("ck-list"),
+    listBody: document.getElementById("ck-list-body"),
+    listTabs: document.getElementById("ck-list-tabs"),
+    listSort: document.getElementById("ck-list-sort"),
+    listMore: document.getElementById("ck-list-more"),
   };
+  let lastResult = null;
 
   categories.forEach((c, i) => el.field.add(new Option(labels.category(c), i)));
   cities.forEach((c, i) => el.city.add(new Option(c, i)));
@@ -89,6 +97,23 @@ export function initChecker(data, labels) {
   el.result.addEventListener("click", (e) => {
     const s = e.target.closest(".suggestion");
     if (s) toggle(Number(s.dataset.i));
+    const open = e.target.closest("[data-list]");
+    if (open) openList(open.dataset.list);
+  });
+  el.listTabs.addEventListener("click", (e) => {
+    const tab = e.target.closest("[data-tab]");
+    if (!tab) return;
+    listState.tab = tab.dataset.tab;
+    listState.shown = LIST_PAGE;
+    renderList();
+  });
+  el.listSort.addEventListener("change", () => {
+    listState.sort = el.listSort.value;
+    renderList();
+  });
+  el.listMore.addEventListener("click", () => {
+    listState.shown += LIST_PAGE;
+    renderList();
   });
 
   function toggle(i) {
@@ -132,30 +157,36 @@ export function initChecker(data, labels) {
     el.all.hidden = Boolean(q);
   }
 
+  // Works on job indices so the matching postings can be looked up in postings.json.
   function evaluate() {
-    const pool = jobs.filter(
-      ([cat, city, german]) =>
+    const pool = [];
+    jobs.forEach(([cat, city, german], i) => {
+      if (
         (state.field === -1 || cat === state.field) &&
         (state.city === -2 || city === state.city) &&
-        (!state.noGerman || german <= 1),
-    );
-    const listed = pool.filter((j) => j[4].length);
-    let matches = 0;
+        (!state.noGerman || german <= 1)
+      ) pool.push(i);
+    });
+    const listed = pool.filter((i) => jobs[i][4].length);
+    const matched = [];
+    const near = []; // [job index, missing skill indices]: one more skill and it's a match
     const pays = [];
     const gains = new Map();
-    for (const [, , , pay, req] of listed) {
+    for (const i of listed) {
+      const [, , , pay, req] = jobs[i];
       const missing = req.filter((s) => !state.selected.has(s));
       const allowed = Math.floor(req.length / 4);
       if (missing.length <= allowed) {
-        matches += 1;
+        matched.push(i);
         if (pay != null) pays.push(pay);
       } else if (missing.length === allowed + 1) {
         // Learning any one of these would turn the posting into a match.
+        near.push([i, missing]);
         for (const s of missing) gains.set(s, (gains.get(s) || 0) + 1);
       }
     }
     const suggestions = [...gains].sort((a, b) => b[1] - a[1] || skills[b[0]].jobs - skills[a[0]].jobs).slice(0, 5);
-    return { pool: pool.length, listed: listed.length, matches, pays, suggestions };
+    return { pool: pool.length, listed: listed.length, matches: matched.length, matched, near, pays, suggestions };
   }
 
   function median(values) {
@@ -166,6 +197,7 @@ export function initChecker(data, labels) {
 
   function renderResult() {
     const r = evaluate();
+    lastResult = r;
     const share = r.listed ? r.matches / r.listed : 0;
     const scope = [
       state.field === -1 ? null : labels.category(categories[state.field]),
@@ -208,14 +240,90 @@ export function initChecker(data, labels) {
              <p class="result-sub">You match <strong>${fmt.int(r.matches)}</strong> of ${fmt.int(r.listed)} postings that list specific skills.</p>
              <div class="meter" aria-hidden="true"><div style="width:${share * 100}%"></div></div>`
       }
+      ${
+        none
+          ? ""
+          : `<div class="list-buttons">
+               <button type="button" class="more" data-list="matched" ${r.matched.length ? "" : "disabled"}>See ${fmt.int(r.matched.length)} matching postings</button>
+               ${r.near.length ? `<button type="button" class="link-btn" data-list="near">${fmt.int(r.near.length)} more are one skill away</button>` : ""}
+             </div>`
+      }
       ${pay}
       ${sugg}
       <p class="small-print">A match means you have all listed skills, or all but one in four. ${fmt.int(r.pool - r.listed)} of ${fmt.int(r.pool)} postings in this selection list no specific tools and aren't counted.</p>`;
   }
 
+  // --- List of matching postings (titles come from postings.json, loaded on first use) ---
+
+  const listState = { tab: "matched", sort: "newest", shown: LIST_PAGE };
+  let postings = null;
+
+  async function loadPostings() {
+    if (postings) return postings;
+    const res = await fetch("data/postings.json", { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    // Both files come from the same build; if one is newer, positions don't line up.
+    if (data.as_of !== data_as_of || data.rows.length !== jobs.length) throw new Error("data is being updated, please reload the page");
+    postings = data;
+    return postings;
+  }
+
+  async function openList(tab) {
+    listState.tab = tab;
+    listState.shown = LIST_PAGE;
+    el.list.hidden = false;
+    el.listBody.innerHTML = `<p class="empty">Loading postings…</p>`;
+    el.list.scrollIntoView({ behavior: "smooth", block: "start" });
+    try {
+      await loadPostings();
+      renderList();
+    } catch (err) {
+      el.listBody.innerHTML = `<p class="empty">Couldn't load the postings (${esc(err.message)}).</p>`;
+    }
+  }
+
+  function renderList() {
+    if (!postings || !lastResult) return;
+    const r = lastResult;
+    const items = listState.tab === "matched" ? r.matched.map((i) => [i, null]) : r.near;
+    el.listTabs.innerHTML = `
+      <button type="button" class="tab" data-tab="matched" aria-selected="${listState.tab === "matched"}">You match (${fmt.int(r.matched.length)})</button>
+      <button type="button" class="tab" data-tab="near" aria-selected="${listState.tab === "near"}">One skill away (${fmt.int(r.near.length)})</button>`;
+
+    const published = (i) => postings.rows[i][4] || "";
+    const sorted = [...items].sort(([a], [b]) =>
+      listState.sort === "pay"
+        ? (jobs[b][3] ?? -1) - (jobs[a][3] ?? -1) || published(b).localeCompare(published(a))
+        : published(b).localeCompare(published(a)),
+    );
+    const page = sorted.slice(0, listState.shown);
+    el.listBody.innerHTML = page.length
+      ? page.map(([i, missing]) => postingRow(i, missing)).join("")
+      : `<p class="empty">${listState.tab === "matched" ? "No matches yet. Add skills or widen the filters." : "Nothing here: add skills first."}</p>`;
+    el.listMore.hidden = sorted.length <= listState.shown;
+    el.listMore.textContent = `Show more (${fmt.int(sorted.length - listState.shown)} left)`;
+  }
+
+  function postingRow(i, missing) {
+    const [refnr, title, company, city, date] = postings.rows[i];
+    const [cat, , german, pay] = jobs[i];
+    const url = postings.url.replace("{refnr}", encodeURIComponent(refnr));
+    const lang = german <= 1 ? `<span class="badge strong">German: ${german === 0 ? "not needed" : "a plus"}</span>` : "";
+    const need = missing
+      ? `<span class="badge need">Learn ${missing.map((s) => esc(skills[s].label)).join(" or ")}</span>`
+      : "";
+    return `<div class="job">
+      <a href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
+      <div class="meta">${esc(company)} · ${esc(city || "—")} · ${esc(labels.category(categories[cat] ?? "other"))}${date ? ` · posted ${esc(fmt.shortDate(date))}` : ""}</div>
+      <div class="side">${need}${lang}${pay != null ? `<span class="pay">${fmt.eur(pay)}/h</span>` : ""}</div>
+    </div>`;
+  }
+
   function update() {
     renderChips();
     renderResult();
+    if (!el.list.hidden) renderList();
     const ids = [...state.selected].map((i) => skills[i].id).join(",");
     const url = new URL(location.href);
     url.search = ids ? `?skills=${ids}` : "";

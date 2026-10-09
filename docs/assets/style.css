@@ -234,6 +234,12 @@ button.more:hover { border-color: var(--ink-3); }
 .suggestion:hover { border-color: var(--accent); }
 .suggestion .gain { color: var(--accent-ink); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .small-print { color: var(--ink-3); font-size: 12px; margin-top: 10px; }
+.list-buttons { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin-top: 4px; }
+.list-buttons .more { margin-top: 0; }
+button.more:disabled { opacity: .5; cursor: default; }
+#ck-list { margin-top: 16px; }
+#ck-list .tabs { margin-bottom: 0; }
+.badge.need { background: transparent; border-color: var(--accent); color: var(--accent-ink); }
 .ck-mini { display: none; }
 
 /* Programmes */

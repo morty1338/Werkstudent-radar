@@ -159,6 +159,21 @@
         </div>
         <aside class="card checker-result" id="ck-result" aria-live="polite"></aside>
       </div>
+      <div class="card" id="ck-list" hidden>
+        <div class="list-head">
+          <div class="tabs" id="ck-list-tabs" role="tablist"></div>
+          <div class="controls">
+            <label class="sr-only" for="ck-list-sort">Sort</label>
+            <select id="ck-list-sort">
+              <option value="newest">Newest first</option>
+              <option value="pay">Highest pay first</option>
+            </select>
+          </div>
+        </div>
+        <div id="ck-list-body" class="job-list" aria-live="polite"></div>
+        <button class="more" id="ck-list-more" type="button" hidden>Show more</button>
+        <p class="small-print">Links open the original posting on arbeitsagentur.de. Same filters as above; postings that list no specific skills aren't included.</p>
+      </div>
     </section>
 
     <section id="programmes" class="wrap section">
