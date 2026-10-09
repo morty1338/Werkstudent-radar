@@ -25,7 +25,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 from .enrich import JOBS_CSV, load_detail_cache
-from .extract import CATEGORIES, extract
+from .extract import CATEGORIES, EXTRACTOR_VERSION, extract
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EVAL_DIR = os.path.join(ROOT, "data", "eval")
@@ -129,14 +129,15 @@ def prf(tp, fp, fn):
 
 
 def build_report(sample, labels, strata, preds):
-    lines = ["# Extraction accuracy", ""]
+    lines = ["# Extraction accuracy", "", f"Rules: extractor version {EXTRACTOR_VERSION}.", ""]
     lab = {r["refnr"]: r for r in labels}
     n_total = len(lab)
     rnd = [ref for ref in lab if strata.get(ref) == "random"]
     lines += [
-        f"Hand-labelled postings: **{n_total}** (random sample: {len(rnd)}). "
-        "Labelling was blind: the labeller saw the posting text, not the predictions. "
-        "Predictions come from re-running the current rules on the same texts.",
+        f"Labelled postings: **{n_total}** (random sample: {len(rnd)}). "
+        "Labelling was blind: the labeller saw the posting text, not the predictions "
+        "(how the labels were made: [LABELS.md](LABELS.md)). "
+        "Predictions come from re-running the rules on the same texts.",
         "",
     ]
 
