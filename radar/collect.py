@@ -14,20 +14,22 @@ code and a clear message when the response no longer looks right.
 """
 
 import argparse
+import csv
 import gzip
 import json
 import logging
 import os
-import re
 import sys
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from . import api
+from .extract import is_werkstudent
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW_DIR = os.path.join(ROOT, "data", "raw")
+HISTORY_CSV = os.path.join(ROOT, "data", "history.csv")
 
 # "Werkstudent" also matches "Werkstudentin"/"Werkstudent:in"; the other two
 # queries pick up English and gender-neutral titles the first one misses.
@@ -38,8 +40,8 @@ REQUEST_DELAY = 0.5      # seconds between pages, to stay polite
 # There are ~4,000 Werkstudent postings on any given day. Far fewer means the
 # API changed or is filtering us, and the run should fail loudly.
 MIN_EXPECTED = 1000
-
-WERKSTUDENT_TITLE = re.compile(r"werk-?stud|working[- ]student", re.IGNORECASE)
+# A real market doesn't halve overnight; a drop like that means a broken query.
+MIN_RATIO_VS_LAST_RUN = 0.5
 
 log = logging.getLogger("collect")
 
@@ -64,6 +66,15 @@ def fetch_query(query):
     return total, records
 
 
+def last_run_total():
+    """Active postings on the last day recorded in data/history.csv, if any."""
+    if not os.path.exists(HISTORY_CSV):
+        return None
+    with open(HISTORY_CSV, newline="", encoding="utf-8") as f:
+        totals = [r for r in csv.DictReader(f) if r["dim"] == "total"]
+    return int(max(totals, key=lambda r: r["date"])["jobs"]) if totals else None
+
+
 def collect():
     started = time.time()
     by_ref, totals = {}, {}
@@ -78,7 +89,7 @@ def collect():
         time.sleep(REQUEST_DELAY)
 
     listings = list(by_ref.values())
-    werkstudent = [r for r in listings if WERKSTUDENT_TITLE.search(r.get("stellenangebotsTitel") or "")]
+    werkstudent = [r for r in listings if is_werkstudent(r.get("stellenangebotsTitel"))]
     meta = {
         "endpoint": api.BASE_URL + api.SEARCH_PATH,
         "queries": totals,
@@ -89,6 +100,12 @@ def collect():
     if len(werkstudent) < MIN_EXPECTED:
         raise CollectorError(
             f"only {len(werkstudent)} Werkstudent postings (expected at least {MIN_EXPECTED}); "
+            "the API may have changed"
+        )
+    previous = last_run_total()
+    if previous and len(werkstudent) < previous * MIN_RATIO_VS_LAST_RUN:
+        raise CollectorError(
+            f"only {len(werkstudent)} Werkstudent postings, down from {previous} on the last run; "
             "the API may have changed"
         )
     return listings, meta
