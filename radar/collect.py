@@ -9,9 +9,8 @@ Output (one folder per run date):
     listings.jsonl.gz   one raw API record per line, de-duplicated by referenznummer
     run.json            run metadata: endpoint, per-query totals, counts, duration
 
-The API is unofficial and changes without notice, so every request is retried
-with backoff, requests are paced, and the script exits with a non-zero code and
-a clear message when the response no longer looks right.
+Requests are paced and retried (see api.py); the script exits with a non-zero
+code and a clear message when the response no longer looks right.
 """
 
 import argparse
@@ -25,27 +24,16 @@ import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-import requests
+from . import api
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW_DIR = os.path.join(ROOT, "data", "raw")
-
-BASE_URL = "https://rest.arbeitsagentur.de/jobboerse/jobsuche-service"
-SEARCH_PATH = "/pc/v6/jobs"
-HEADERS = {
-    # Public client id used by the arbeitsagentur.de web app; not a secret.
-    "X-API-Key": "jobboerse-jobsuche",
-    "User-Agent": "werkstudent-radar/0.1 (+https://github.com/morty1338/werkstudent-radar)",
-    "Accept": "application/json",
-}
 
 # "Werkstudent" also matches "Werkstudentin"/"Werkstudent:in"; the other two
 # queries pick up English and gender-neutral titles the first one misses.
 QUERIES = ["Werkstudent", "Working Student", "Werkstudierende"]
 PAGE_SIZE = 100          # API maximum
 REQUEST_DELAY = 0.5      # seconds between pages, to stay polite
-RETRIES = 4
-TIMEOUT = 30
 
 # There are ~4,000 Werkstudent postings on any given day. Far fewer means the
 # API changed or is filtering us, and the run should fail loudly.
@@ -57,42 +45,14 @@ log = logging.getLogger("collect")
 
 
 class CollectorError(Exception):
-    """Raised when the API answers in a way we can't trust."""
+    """Raised when the result looks implausible."""
 
 
-def get_json(session, url, params):
-    """GET with retries and exponential backoff on network errors, 429 and 5xx."""
-    last_error = None
-    for attempt in range(1, RETRIES + 1):
-        try:
-            resp = session.get(url, params=params, timeout=TIMEOUT)
-        except requests.RequestException as e:
-            last_error = f"network error: {e}"
-        else:
-            if resp.status_code == 200:
-                try:
-                    return resp.json()
-                except ValueError:
-                    last_error = "response is not JSON"
-            elif resp.status_code == 429 or resp.status_code >= 500:
-                last_error = f"HTTP {resp.status_code}"
-            else:
-                # 4xx other than 429 won't fix itself (e.g. 403 when an API version is retired).
-                raise CollectorError(f"HTTP {resp.status_code} from {resp.url}: {resp.text[:200]}")
-        wait = 2 ** attempt
-        log.warning("attempt %d/%d failed (%s), retrying in %ds", attempt, RETRIES, last_error, wait)
-        time.sleep(wait)
-    raise CollectorError(f"giving up on {url} {params}: {last_error}")
-
-
-def fetch_query(session, query):
+def fetch_query(query):
     """Page through every result for one search term. Returns (total, records)."""
-    url = BASE_URL + SEARCH_PATH
-    records, page, total = [], 1, None
+    records, page = [], 1
     while True:
-        data = get_json(session, url, {"was": query, "page": page, "size": PAGE_SIZE})
-        if not isinstance(data, dict) or "maxErgebnisse" not in data:
-            raise CollectorError(f"unexpected response shape for '{query}' page {page}: keys={list(data)[:10]}")
+        data = api.search(query, page, PAGE_SIZE)
         total = data["maxErgebnisse"]
         batch = data.get("ergebnisliste") or []
         records.extend(batch)
@@ -106,12 +66,9 @@ def fetch_query(session, query):
 
 def collect():
     started = time.time()
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
     by_ref, totals = {}, {}
     for query in QUERIES:
-        total, records = fetch_query(session, query)
+        total, records = fetch_query(query)
         totals[query] = total
         for rec in records:
             ref = rec.get("referenznummer")
@@ -123,7 +80,7 @@ def collect():
     listings = list(by_ref.values())
     werkstudent = [r for r in listings if WERKSTUDENT_TITLE.search(r.get("stellenangebotsTitel") or "")]
     meta = {
-        "endpoint": BASE_URL + SEARCH_PATH,
+        "endpoint": api.BASE_URL + api.SEARCH_PATH,
         "queries": totals,
         "unique_postings": len(listings),
         "werkstudent_title": len(werkstudent),
@@ -159,7 +116,7 @@ def main():
 
     try:
         listings, meta = collect()
-    except CollectorError as e:
+    except (api.ApiError, CollectorError) as e:
         log.error("collection failed: %s", e)
         return 1
 
