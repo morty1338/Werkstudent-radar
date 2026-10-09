@@ -146,12 +146,38 @@ python3 -m http.server --directory docs
 
 ## Accuracy
 
-The extraction rules are heuristics. They were checked by hand against samples of real
-postings, and the rules are covered by tests:
+The extraction rules are heuristics, so they are measured against 100 labelled
+postings ([`radar/evaluate.py`](radar/evaluate.py)): 70 drawn at random, 20 that
+the rules call "open without German" and 10 whose pay was found in the text.
+Labelling was blind (posting text only, no predictions) and was done by an AI
+assistant in two passes, not by a human; see
+[`data/eval/LABELS.md`](data/eval/LABELS.md) for exactly how.
+
+| Check | Baseline (rules v2) | After fixes (v3)\* |
+|---|---|---|
+| Needs German: yes / no (random 70) | 100% | 100% |
+| German level: required / plus / none / not mentioned | 94% | 99% |
+| Shown as "open without German" and really is | **68%** (15/22) | 100% (15/15) |
+| Hourly pay found: precision / recall | 100% / 100% | 100% / 100% |
+| Pay amount correct | 95% (18/19) | 100% (19/19) |
+| Skills, 14 common ones: precision / recall | 99% / 96% | 99% / 97% |
+| Job field | 64% | 79% |
+
+\* The rules were fixed using the baseline disagreements, so the v3 column is
+measured on postings the rules have now "seen" and is optimistic. The baseline
+column is the honest one. Biggest lesson: the German rule confused "Russisch
+von Vorteil" or "French is beneficial" with German being optional, which
+inflated the share of English-friendly jobs. Job field remains the weakest
+part: many postings sit between two fields ("Datenanalyse & Finance
+Operations").
+
+Full reports: [baseline](data/eval/report_baseline.md),
+[current](data/eval/report.md). Every fixed error became a test case:
 
 ```bash
 .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/python -m pytest
+.venv/bin/python -m pytest                   # 109 rule and SQL tests
+.venv/bin/python -m radar.evaluate report    # needs the local sample texts
 ```
 
 ## Project layout
@@ -164,9 +190,12 @@ radar/extract.py   feature extraction rules
 radar/skills.py    skill dictionary (German + English synonyms)
 radar/build.py     load jobs.csv into SQLite, run radar/sql/*.sql, write JSON
 radar/sql/         schema and one query per output
+radar/evaluate.py  accuracy check against labelled postings
+eval/label.html    blind labelling form
 tests/             rule tests on made-up snippets, SQL tests on a tiny fixture
 data/jobs.csv      extracted features (committed)
 data/history.csv   daily metric snapshots (committed)
+data/eval/         evaluation labels and reports (job texts stay local)
 docs/              the website (index.html, assets/)
 docs/data/         JSON consumed by the website
 data/raw/          local raw dumps, one folder per day (not committed)
