@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Label postings</title>
+  <style>
+    :root {
+      color-scheme: light; --bg: #fcfcfb; --surface: #fff; --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #7d7c77;
+      --line: #e6e5e0; --accent: #2a78d6; --soft: #eef4fc;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { color-scheme: dark; --bg: #121211; --surface: #1a1a19; --ink: #fff; --ink-2: #c3c2b7; --ink-3: #94938a;
+        --line: #2f2f2c; --accent: #3987e5; --soft: #1c2a3d; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 1; }
+    header h1 { font-size: 16px; margin: 0; }
+    .progress { flex: 1; height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
+    .progress div { height: 100%; background: var(--accent); }
+    .status { color: var(--ink-2); font-size: 13px; white-space: nowrap; }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto; }
+    .posting, form { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+    .posting h2 { font-size: 20px; margin: 0 0 4px; }
+    .meta { color: var(--ink-2); font-size: 14px; margin-bottom: 14px; }
+    .text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.6; }
+    form { position: sticky; top: 64px; align-self: start; max-height: calc(100vh - 80px); overflow: auto; }
+    fieldset { border: 0; padding: 0; margin: 0 0 16px; }
+    legend { font-weight: 650; margin-bottom: 6px; }
+    .help { color: var(--ink-3); font-size: 12px; margin: -2px 0 6px; }
+    label.opt { display: flex; gap: 8px; align-items: flex-start; padding: 5px 8px; border-radius: 8px; cursor: pointer; }
+    label.opt:hover { background: var(--soft); }
+    label.opt small { display: block; color: var(--ink-3); font-size: 12px; }
+    input[type="radio"], input[type="checkbox"] { accent-color: var(--accent); margin-top: 4px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 6px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    input[type="number"], select, textarea { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; width: 100%; }
+    textarea { resize: vertical; min-height: 40px; }
+    .buttons { display: flex; gap: 8px; position: sticky; bottom: -18px; background: var(--surface); padding: 10px 0 2px; }
+    button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; flex: 1; }
+    kbd { font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--ink-3); }
+    .done { padding: 40px; text-align: center; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } form { position: static; max-height: none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Label postings</h1>
+    <div class="progress"><div id="bar"></div></div>
+    <span class="status" id="status">Loading…</span>
+  </header>
+  <main id="main">
+    <article class="posting">
+      <h2 id="title"></h2>
+      <div class="meta" id="meta"></div>
+      <div class="text" id="text"></div>
+    </article>
+    <form id="form" autocomplete="off">
+      <fieldset>
+        <legend>1. Is this a Werkstudent job?</legend>
+        <div class="row">
+          <label class="opt"><input type="radio" name="is_werkstudent" value="1" required> Yes</label>
+          <label class="opt"><input type="radio" name="is_werkstudent" value="0"> No (internship, thesis, minijob…)</label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>2. Job field</legend>
+        <p class="help">What the student would mainly do.</p>
+        <select name="category" id="category" required><option value="">Choose…</option></select>
+      </fieldset>
+      <fieldset>
+        <legend>3. German <kbd>1</kbd>–<kbd>4</kbd></legend>
+        <label class="opt"><input type="radio" name="german" value="required" required>
+          <span>Required<small>Asks for German at any level: “fließend”, “sehr gute Deutschkenntnisse”, “German B2”.</small></span></label>
+        <label class="opt"><input type="radio" name="german" value="plus">
+          <span>A plus<small>German is “von Vorteil”, “wünschenswert”, “nice to have”.</small></span></label>
+        <label class="opt"><input type="radio" name="german" value="none">
+          <span>Not needed<small>Says English only / no German needed, or English posting that never asks for German.</small></span></label>
+        <label class="opt"><input type="radio" name="german" value="implicit">
+          <span>Not mentioned<small>German-language posting that says nothing about language.</small></span></label>
+      </fieldset>
+      <fieldset>
+        <legend>4. Hourly pay stated in the text (€)</legend>
+        <p class="help">Only hourly rates. Leave empty if none or only monthly/yearly. Same value twice for a fixed rate.</p>
+        <div class="row">
+          <input type="number" name="pay_min" step="0.01" min="0" placeholder="from">
+          <span>–</span>
+          <input type="number" name="pay_max" step="0.01" min="0" placeholder="to">
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>5. Skills the posting asks for</legend>
+        <p class="help">Required or nice to have. Not when only the company uses or sells it. “MS Office (Excel, PowerPoint)” = all three.</p>
+        <div class="grid" id="skills"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Note (optional)</legend>
+        <textarea name="note" rows="2"></textarea>
+      </fieldset>
+      <div class="buttons">
+        <button type="button" id="prev">← Back</button>
+        <button type="submit" class="primary">Save &amp; next <kbd>Enter</kbd></button>
+      </div>
+    </form>
+  </main>
+
+  <script type="module">
+    const sample = await (await fetch("/data/eval/sample.json")).json();
+    const labels = new Map((await (await fetch("/labels")).json()).map((r) => [r.refnr, r]));
+    const posts = sample.postings;
+    const form = document.getElementById("form");
+    const $ = (id) => document.getElementById(id);
+
+    sample.categories.forEach((c) => $("category").add(new Option(c.label, c.id)));
+    $("skills").innerHTML = sample.panel
+      .map((s) => `<label class="opt"><input type="checkbox" name="skills" value="${s.id}"> ${s.label}</label>`)
+      .join("");
+
+    // Start at the first unlabelled posting.
+    let i = Math.max(0, posts.findIndex((p) => !labels.has(p.refnr)));
+    if (labels.size === posts.length) i = posts.length;
+
+    function show() {
+      const n = labels.size;
+      $("bar").style.width = `${(n / posts.length) * 100}%`;
+      $("status").textContent = `${n} / ${posts.length} labelled`;
+      if (i >= posts.length) {
+        $("main").innerHTML = `<div class="done"><h2>All ${posts.length} postings labelled 🎉</h2><p>Labels are saved in data/eval/labels.csv. Run <code>python -m radar.evaluate report</code>.</p></div>`;
+        return;
+      }
+      const p = posts[i];
+      $("title").textContent = `${i + 1}. ${p.title}`;
+      $("meta").innerHTML = `${p.company} · ${p.city || "—"} · <a href="${p.url}" target="_blank" rel="noopener">original</a>`;
+      $("text").textContent = p.text;
+      form.reset();
+      const l = labels.get(p.refnr);
+      if (l) {
+        form.querySelector(`[name=is_werkstudent][value="${l.is_werkstudent}"]`)?.click();
+        form.category.value = l.category;
+        form.querySelector(`[name=german][value="${l.german}"]`)?.click();
+        form.pay_min.value = l.pay_min;
+        form.pay_max.value = l.pay_max;
+        l.skills.split("|").filter(Boolean).forEach((s) => (form.querySelector(`[name=skills][value="${s}"]`).checked = true));
+        form.note.value = l.note;
+      }
+      document.querySelector(".posting").scrollIntoView();
+      window.scrollTo(0, 0);
+    }
+
+    async function save() {
+      const d = new FormData(form);
+      const min = d.get("pay_min");
+      const max = d.get("pay_max") || min;
+      labels.set(posts[i].refnr, {
+        refnr: posts[i].refnr,
+        is_werkstudent: d.get("is_werkstudent"),
+        category: d.get("category"),
+        german: d.get("german"),
+        pay_min: min ? Number(min).toFixed(2) : "",
+        pay_max: max ? Number(max).toFixed(2) : "",
+        skills: d.getAll("skills").join("|"),
+        note: d.get("note").trim(),
+      });
+      const res = await fetch("/labels", { method: "POST", body: JSON.stringify([...labels.values()]) });
+      if (!res.ok) throw new Error(`save failed: HTTP ${res.status}`);
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        await save();
+        i += 1;
+        show();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+    $("prev").addEventListener("click", () => {
+      if (i > 0) { i -= 1; show(); }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.target.matches("input[type=number], textarea, select")) return;
+      const levels = ["required", "plus", "none", "implicit"];
+      if (e.key >= "1" && e.key <= "4") form.querySelector(`[name=german][value="${levels[e.key - 1]}"]`).click();
+    });
+    show();
+  </script>
+</body>
+</html>

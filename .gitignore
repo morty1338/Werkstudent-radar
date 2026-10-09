@@ -6,6 +6,8 @@ __pycache__/
 
 # Raw API dumps stay local (they are large and contain employer data)
 data/raw/
+# Job texts of the evaluation sample (labels.csv without texts is committed)
+data/eval/sample.json
 
 # Local work in progress
 _drafts/
