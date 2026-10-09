@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 .venv/
+.pytest_cache/
 
 # Raw API dumps stay local (they are large and contain employer data)
 data/raw/
