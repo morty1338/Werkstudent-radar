@@ -7,7 +7,7 @@ Data source: the public job search of the
 [Bundesagentur für Arbeit](https://www.arbeitsagentur.de/jobsuche/).
 Only Werkstudent postings in Germany are collected.
 
-> Work in progress. Currently: collection of raw postings and feature extraction.
+> Work in progress. Currently: collection, feature extraction and SQL aggregates.
 
 ## Quick start
 
@@ -16,6 +16,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m radar.collect   # 1. raw search results (~30 s)
 .venv/bin/python -m radar.enrich    # 2. job texts -> features in data/jobs.csv (~2 min on the first run)
+.venv/bin/python -m radar.build     # 3. SQL aggregates -> docs/data/*.json + data/history.csv
 ```
 
 `collect` pages through the job search API for all Werkstudent postings in Germany
@@ -68,7 +69,37 @@ One row per Werkstudent posting ever seen.
 - **Pay**: an amount only counts as hourly pay when the marker sits right next
   to it ("16 €/h", "Stundenlohn von 16 €"), and only between 12 and 60 €.
 
-These are heuristics. They were checked by hand against samples of real
+## Aggregation (`radar/build.py`, `radar/sql/`)
+
+`build` loads `jobs.csv` into an in-memory SQLite database
+([schema](radar/sql/schema.sql): `jobs`, link tables `job_skills` /
+`job_majors`, label tables) and runs one SQL file per output. Medians and
+quartiles come from a custom `percentile(value, q)` aggregate; top-N per group
+uses window functions.
+
+Two choices keep the numbers honest:
+
+- **Pay counts each role once.** Some employers post the same role in dozens of
+  cities (one had 97 copies, all at minimum wage). Pay figures use one posting
+  per company + title (per city for city figures); job counts still count every
+  posting.
+- **Medians need breadth.** A median is shown only with at least 10 roles from 5
+  employers. Each group also reports `pay_employers` and `top_employer_share`;
+  headline comparisons ("best-paid city") skip groups where one employer supplies
+  more than 35% of the sample.
+
+Outputs:
+
+| File | Content |
+|------|---------|
+| `docs/data/summary.json` | totals, German requirements, pay histogram, fields, cities, skills, study programmes (with example postings), all postings open to non-German speakers, headline insights |
+| `docs/data/checker.json` | per posting: field, city, German level, pay and skill indices, for the in-browser skill checker |
+| `docs/data/history.json` | daily series built from `data/history.csv` |
+| `data/history.csv` | one row per day × metric (`total`, `category`, `city`, `skill`, `major`, `german`). Which postings were online on a given day can't be reconstructed later, so this is collected from day one. |
+
+## Accuracy
+
+The extraction rules are heuristics. They were checked by hand against samples of real
 postings, and the rules are covered by tests:
 
 ```bash
@@ -84,7 +115,11 @@ radar/collect.py   fetch all Werkstudent postings -> data/raw/<date>/
 radar/enrich.py    fetch texts for new postings, extract features -> data/jobs.csv
 radar/extract.py   feature extraction rules
 radar/skills.py    skill dictionary (German + English synonyms)
-tests/             rule tests on made-up snippets
+radar/build.py     load jobs.csv into SQLite, run radar/sql/*.sql, write JSON
+radar/sql/         schema and one query per output
+tests/             rule tests on made-up snippets, SQL tests on a tiny fixture
 data/jobs.csv      extracted features (committed)
+data/history.csv   daily metric snapshots (committed)
+docs/data/         JSON consumed by the website
 data/raw/          local raw dumps, one folder per day (not committed)
 ```
