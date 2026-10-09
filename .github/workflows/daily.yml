@@ -110,3 +110,13 @@ jobs:
               await github.rest.issues.createComment({ ...context.repo, issue_number: issue.number, body: `Recovered: ${run}` });
               await github.rest.issues.update({ ...context.repo, issue_number: issue.number, state: 'closed' });
             }
+
+  # Pushes made with GITHUB_TOKEN don't trigger other workflows or Pages builds,
+  # so publish the updated site from here.
+  deploy:
+    needs: update
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml
