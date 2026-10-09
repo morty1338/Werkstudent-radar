@@ -1,0 +1,241 @@
+"""Skill dictionary: ~150 hard skills with German and English synonyms.
+
+Each entry is (id, label, group, [regex patterns]). Patterns are matched
+case-insensitively against the job description and title. Use the inline
+flag (?-i:...) for tokens that are only meaningful when capitalised
+("Excel", "React", "Word"), so ordinary words like "excel at" don't count.
+
+Bump EXTRACTOR_VERSION in extract.py whenever this file changes: active jobs
+are then re-fetched and re-tagged on the next run.
+"""
+
+SKILLS = [
+    # --- Programming languages -------------------------------------------
+    ("python", "Python", "Programming", [r"\bpython\b"]),
+    ("java", "Java", "Programming", [r"\bjava\b(?!\s*script)"]),
+    ("javascript", "JavaScript", "Programming", [r"java\s*script", r"\bjs\b", r"ecmascript"]),
+    ("typescript", "TypeScript", "Programming", [r"type\s*script"]),
+    ("csharp", "C#", "Programming", [r"\bc#", r"c-sharp", r"\bc sharp\b"]),
+    ("cpp", "C/C++", "Programming", [r"c\+\+", r"(?-i:\bC\b)(?=\s*(?:/|,|und|and|oder|or)\s*(?:C\+\+|Python|Java|Assembler|Embedded))", r"embedded[- ]c\b", r"ansi[- ]c\b"]),
+    ("go", "Go", "Programming", [r"\bgolang\b", r"(?-i:\bGo\b)\s*\(", r"(?-i:(?:Java|Python|Rust|Kotlin|C\+\+|TypeScript|Scala),\s*Go\b)", r"(?-i:\bGo,\s*(?:Java|Python|Rust|Kotlin|C\+\+|TypeScript|Scala))"]),
+    ("rust", "Rust", "Programming", [r"(?-i:\bRust\b)"]),
+    ("kotlin", "Kotlin", "Programming", [r"\bkotlin\b"]),
+    ("swift", "Swift", "Programming", [r"(?-i:\bSwift\b)(?!\s*(?:Code|code|Zahlung))", r"swiftui"]),
+    ("php", "PHP", "Programming", [r"\bphp\b"]),
+    ("ruby", "Ruby / Rails", "Programming", [r"\bruby\b", r"ruby on rails"]),
+    ("scala", "Scala", "Programming", [r"(?-i:\bScala\b)"]),
+    ("r", "R", "Programming", [r"(?-i:\bR\b)(?=\s*(?:,|/|und\b|and\b|oder\b|or\b|\)|-Programm|Studio|Shiny))", r"rstudio", r"r-programmierung", r"programmiersprache r\b", r"(?-i:(?:Python|SQL|SPSS|Stata|Matlab)\s*(?:,|/|und|and|oder|or)\s*R\b)"]),
+    ("matlab", "MATLAB", "Programming", [r"\bmatlab\b"]),
+    ("vba", "VBA / Makros", "Programming", [r"\bvba\b", r"excel[- ]makros?", r"\bmakros?\b(?=.{0,40}excel)"]),
+    ("bash", "Shell / Bash", "Programming", [r"\bbash\b", r"shell[- ]?skript", r"shell[- ]?script", r"\bzsh\b"]),
+    ("powershell", "PowerShell", "Programming", [r"power\s*shell"]),
+    ("abap", "SAP ABAP", "Programming", [r"\babap\b"]),
+    ("vhdl", "VHDL / FPGA", "Engineering", [r"\bvhdl\b", r"\bverilog\b", r"\bfpga\b"]),
+
+    # --- Web & mobile --------------------------------------------------------
+    ("html_css", "HTML / CSS", "Web & Mobile", [r"\bhtml5?\b", r"\bcss3?\b", r"\bsass\b|\bscss\b"]),
+    ("react", "React", "Web & Mobile", [r"(?-i:\bReact\b)(?!\s+(?:to|on|quickly|schnell))", r"react\.?js", r"react native"]),
+    ("angular", "Angular", "Web & Mobile", [r"\bangular(?:js)?\b"]),
+    ("vue", "Vue.js", "Web & Mobile", [r"\bvue(?:\.?js)?\b", r"\bnuxt\b"]),
+    ("nextjs", "Next.js", "Web & Mobile", [r"next\.js", r"\bnextjs\b"]),
+    ("nodejs", "Node.js", "Web & Mobile", [r"node\.?js", r"\bnode\b(?=\s*(?:,|/|und|and|\())", r"\bexpress\.?js\b", r"\bnestjs\b"]),
+    ("django", "Django / Flask / FastAPI", "Web & Mobile", [r"\bdjango\b", r"\bflask\b", r"\bfastapi\b"]),
+    ("spring", "Spring / Spring Boot", "Web & Mobile", [r"spring[- ]?boot", r"(?-i:\bSpring\b)(?=\s*(?:,|/|und|and|Framework|Boot|\())"]),
+    ("dotnet", ".NET", "Web & Mobile", [r"\.net\b", r"\bdotnet\b", r"asp\.net"]),
+    ("laravel", "Laravel / Symfony", "Web & Mobile", [r"\blaravel\b", r"\bsymfony\b"]),
+    ("rest_api", "REST APIs", "Web & Mobile", [r"\brest(?:ful)?[- ]?(?:api|schnittstelle|service)", r"\bapis?\b", r"\bopenapi\b|\bswagger\b"]),
+    ("graphql", "GraphQL", "Web & Mobile", [r"graphql"]),
+    ("android", "Android", "Web & Mobile", [r"\bandroid\b"]),
+    ("ios", "iOS", "Web & Mobile", [r"(?-i:\biOS\b)"]),
+    ("flutter", "Flutter", "Web & Mobile", [r"\bflutter\b", r"(?-i:\bDart\b)"]),
+    ("wordpress", "WordPress / CMS", "Web & Mobile", [r"wordpress", r"\btypo3\b", r"\bcms\b", r"\bcontentful\b", r"\bdrupal\b"]),
+    ("shopify", "Shopify / E-Commerce", "Web & Mobile", [r"\bshopify\b", r"\bshopware\b", r"\bmagento\b", r"woocommerce"]),
+    ("testing", "Software testing / QA", "Web & Mobile", [r"test[- ]?automati", r"unit[- ]?test", r"\bselenium\b", r"\bcypress\b", r"\bplaywright\b", r"\bpytest\b", r"\bjunit\b", r"qualitätssicherung (?:von|der) software", r"\bqa\b"]),
+    ("unity", "Unity / Unreal", "Web & Mobile", [r"(?-i:\bUnity\b)(?!\s+(?:in|of))", r"unreal engine", r"\bunreal\b"]),
+
+    # --- Data & AI --------------------------------------------------------
+    ("sql", "SQL", "Data & AI", [r"\bsql\b", r"\bt-sql\b", r"pl/sql", r"\bmysql\b", r"postgre", r"sql[- ]server", r"\bsqlite\b"]),
+    ("postgresql", "PostgreSQL", "Data & AI", [r"postgre(?:s|sql)"]),
+    ("mysql", "MySQL / MariaDB", "Data & AI", [r"\bmysql\b", r"mariadb"]),
+    ("oracle_db", "Oracle DB", "Data & AI", [r"oracle[- ]?(?:db|datenbank|database|sql)", r"pl/sql"]),
+    ("nosql", "NoSQL / MongoDB", "Data & AI", [r"\bnosql\b", r"mongo\s*db", r"\bcassandra\b", r"\bdynamodb\b", r"\bredis\b"]),
+    ("pandas", "pandas / NumPy", "Data & AI", [r"\bpandas\b", r"\bnumpy\b", r"\bpolars\b", r"\bscipy\b"]),
+    ("sklearn", "scikit-learn", "Data & AI", [r"scikit[- ]?learn", r"\bsklearn\b"]),
+    ("tensorflow", "TensorFlow / Keras", "Data & AI", [r"tensor\s*flow", r"\bkeras\b"]),
+    ("pytorch", "PyTorch", "Data & AI", [r"py\s*torch"]),
+    ("ml", "Machine Learning", "Data & AI", [r"machine[- ]learning", r"maschinelle[sn]? lernen", r"\bml\b", r"\bml[- ]modell"]),
+    ("deep_learning", "Deep Learning", "Data & AI", [r"deep[- ]learning", r"neuronale[n]? netz", r"neural network"]),
+    ("nlp", "NLP", "Data & AI", [r"\bnlp\b", r"natural language processing", r"sprachverarbeitung"]),
+    ("genai", "GenAI / LLMs", "Data & AI", [r"\bllms?\b", r"large language model", r"generative (?:ki|ai)", r"\bgen\s?ai\b", r"chatgpt", r"\bgpt-?\d?\b", r"prompt[- ]engineering", r"\brag\b", r"langchain", r"openai"]),
+    ("computer_vision", "Computer Vision", "Data & AI", [r"computer vision", r"bildverarbeitung", r"opencv", r"image processing"]),
+    ("statistics", "Statistics", "Data & AI", [r"statisti", r"regression", r"hypothes[ei]s ?test", r"ökonometrie", r"econometric"]),
+    ("spss", "SPSS", "Data & AI", [r"\bspss\b"]),
+    ("stata", "Stata", "Data & AI", [r"(?-i:\bStata\b|\bSTATA\b)"]),
+    ("powerbi", "Power BI", "Data & AI", [r"power\s*bi\b", r"\bpowerbi\b", r"\bdax\b"]),
+    ("tableau", "Tableau", "Data & AI", [r"\btableau\b"]),
+    ("qlik", "Qlik", "Data & AI", [r"\bqlik"]),
+    ("looker", "Looker / Data Studio", "Data & AI", [r"\blooker\b", r"data studio", r"looker studio"]),
+    ("dataviz", "Data visualisation", "Data & AI", [r"daten?visualisierung", r"data visuali[sz]", r"visualisierung von daten", r"dashboard"]),
+    ("etl", "ETL / Data pipelines", "Data & AI", [r"\betl\b", r"\belt\b", r"data pipeline", r"datenpipeline", r"data engineering"]),
+    ("dwh", "Data Warehouse", "Data & AI", [r"data[- ]?warehouse", r"\bdwh\b", r"data lake", r"lakehouse"]),
+    ("spark", "Spark / Hadoop", "Data & AI", [r"\bspark\b", r"pyspark", r"hadoop", r"\bhive\b"]),
+    ("databricks", "Databricks", "Data & AI", [r"databricks"]),
+    ("snowflake", "Snowflake", "Data & AI", [r"(?-i:\bSnowflake\b)"]),
+    ("dbt", "dbt", "Data & AI", [r"(?-i:\bdbt\b)"]),
+    ("airflow", "Airflow", "Data & AI", [r"\bairflow\b"]),
+    ("kafka", "Kafka", "Data & AI", [r"\bkafka\b"]),
+    ("elastic", "Elasticsearch", "Data & AI", [r"elastic\s*search", r"\bkibana\b", r"opensearch"]),
+    ("data_analysis", "Data analysis", "Data & AI", [r"datenanalyse", r"data analy", r"analyse von daten", r"datenauswertung", r"auswertung von daten"]),
+    ("jupyter", "Jupyter", "Data & AI", [r"jupyter"]),
+
+    # --- Cloud & DevOps ---------------------------------------------------
+    ("aws", "AWS", "Cloud & DevOps", [r"\baws\b", r"amazon web services"]),
+    ("azure", "Azure", "Cloud & DevOps", [r"\bazure\b"]),
+    ("gcp", "Google Cloud", "Cloud & DevOps", [r"\bgcp\b", r"google cloud", r"bigquery"]),
+    ("docker", "Docker", "Cloud & DevOps", [r"\bdocker\b", r"container(?:isierung|ization|isation)"]),
+    ("kubernetes", "Kubernetes", "Cloud & DevOps", [r"kubernetes", r"\bk8s\b", r"openshift", r"\bhelm\b"]),
+    ("terraform", "Terraform / IaC", "Cloud & DevOps", [r"terraform", r"infrastructure as code", r"\biac\b", r"\bbicep\b", r"cloudformation"]),
+    ("ansible", "Ansible", "Cloud & DevOps", [r"\bansible\b", r"\bpuppet\b", r"\bchef\b(?=.{0,30}(?:ansible|puppet|config))"]),
+    ("cicd", "CI/CD", "Cloud & DevOps", [r"ci\s*/\s*cd", r"continuous (?:integration|delivery|deployment)", r"\bjenkins\b", r"gitlab[- ]ci", r"github actions", r"azure devops"]),
+    ("git", "Git", "Cloud & DevOps", [r"\bgit\b", r"github", r"gitlab", r"bitbucket", r"versionsverwaltung", r"version control"]),
+    ("linux", "Linux", "Cloud & DevOps", [r"\blinux\b", r"\bunix\b", r"\bubuntu\b", r"\bdebian\b", r"red ?hat"]),
+    ("devops", "DevOps", "Cloud & DevOps", [r"devops"]),
+    ("microservices", "Microservices", "Cloud & DevOps", [r"micro[- ]?services?"]),
+
+    # --- IT & security ----------------------------------------------------
+    ("windows_server", "Windows Server / AD", "IT & Security", [r"windows[- ]server", r"active directory", r"\bentra id\b", r"\bgpo\b"]),
+    ("m365_admin", "Microsoft 365 admin", "IT & Security", [r"\bintune\b", r"exchange online", r"m365[- ]admin", r"microsoft 365 admin", r"\bsccm\b", r"endpoint manag"]),
+    ("networking", "Networking", "IT & Security", [r"netzwerktechnik", r"tcp/ip", r"\bvlan", r"\brouting\b", r"\bswitching\b", r"\bcisco\b", r"netzwerk(?:administration|infrastruktur|kenntnisse)", r"network(?:ing| infrastructure)"]),
+    ("it_security", "IT security", "IT & Security", [r"it[- ]sicherheit", r"informationssicherheit", r"cyber[- ]?security", r"it[- ]security", r"information security", r"\bisms\b", r"iso 27001", r"\bsiem\b", r"penetration ?test", r"pentest"]),
+    ("itil", "ITIL / IT service mgmt", "IT & Security", [r"\bitil\b", r"service[- ]?desk", r"\bservicenow\b", r"ticketsystem", r"ticket[- ]system"]),
+    ("it_support", "IT support", "IT & Security", [r"it[- ]support", r"1st[- ]level", r"2nd[- ]level", r"first[- ]level", r"second[- ]level", r"helpdesk", r"anwenderbetreuung", r"user support"]),
+    ("virtualization", "Virtualisation", "IT & Security", [r"vmware", r"hyper-v", r"virtualisierung", r"virtuali[sz]ation", r"\bproxmox\b", r"\bcitrix\b"]),
+
+    # --- Office & productivity -------------------------------------------
+    ("excel", "Excel", "Office & Tools", [r"(?-i:\bExcel\b|\bEXCEL\b)", r"ms[- ]excel", r"pivot", r"sverweis", r"xlookup|vlookup"]),
+    ("ms_office", "MS Office", "Office & Tools", [r"ms[- ]office", r"microsoft[- ]office", r"office[- ]?(?:paket|anwendungen|programme|kenntnisse|365|suite)", r"\bm365\b", r"microsoft 365"]),
+    ("powerpoint", "PowerPoint", "Office & Tools", [r"power\s*point", r"\bpptx?\b"]),
+    ("word", "Word", "Office & Tools", [r"(?-i:\bWord\b)(?!\s+of)", r"ms[- ]word"]),
+    ("outlook", "Outlook", "Office & Tools", [r"\boutlook\b"]),
+    ("google_workspace", "Google Workspace", "Office & Tools", [r"google (?:workspace|sheets|docs|suite)", r"\bg[- ]suite\b"]),
+    ("jira", "Jira / Confluence", "Office & Tools", [r"\bjira\b", r"confluence"]),
+    ("notion", "Notion / Miro", "Office & Tools", [r"(?-i:\bNotion\b)", r"\bmiro\b"]),
+    ("pm_tools", "Asana / Trello / Monday", "Office & Tools", [r"\basana\b", r"\btrello\b", r"monday\.com", r"\bclickup\b", r"ms project", r"microsoft project"]),
+    ("power_platform", "Power Apps / Power Automate", "Office & Tools", [r"power\s*apps?", r"power\s*automate", r"power platform", r"low[- ]code", r"no[- ]code"]),
+    ("rpa", "RPA (UiPath etc.)", "Office & Tools", [r"\brpa\b", r"uipath", r"robotic process automation", r"automation anywhere"]),
+    ("zapier", "Zapier / Make / n8n", "Office & Tools", [r"zapier", r"\bn8n\b", r"(?-i:\bMake\b)\s*\(?(?:\.com|Integromat)", r"integromat"]),
+    ("driving_licence", "Driving licence (B)", "Office & Tools", [r"führerschein", r"fahrerlaubnis", r"driver'?s licen[cs]e", r"driving licen[cs]e"]),
+
+    # --- ERP / SAP / CRM ----------------------------------------------------
+    ("sap", "SAP (any)", "ERP & CRM", [r"\bsap\b", r"s/4\s?hana", r"\bs4hana\b"]),
+    ("sap_s4", "SAP S/4HANA", "ERP & CRM", [r"s/4\s?hana", r"\bs4\s?hana\b", r"\bhana\b"]),
+    ("sap_fico", "SAP FI/CO", "ERP & CRM", [r"sap[- ]?f[il]\b", r"sap[- ]?co\b", r"sap[- ]?fi/co", r"\bfico\b"]),
+    ("sap_mm_sd", "SAP MM/SD/PP", "ERP & CRM", [r"sap[- ]?(?:mm|sd|pp|ewm|wm|le|qm)\b"]),
+    ("sap_hcm", "SAP HCM / SuccessFactors", "ERP & CRM", [r"sap[- ]?hcm", r"successfactors"]),
+    ("dynamics", "MS Dynamics / Navision", "ERP & CRM", [r"dynamics\s*(?:365|nav|ax|crm|bc)", r"navision", r"business central"]),
+    ("datev", "DATEV", "ERP & CRM", [r"\bdatev\b"]),
+    ("other_erp", "ERP (other)", "ERP & CRM", [r"\berp\b", r"\boracle\b(?!\s*(?:db|datenbank|database))", r"\bproalpha\b", r"\babas\b", r"\bodoo\b", r"\binfor\b"]),
+    ("salesforce", "Salesforce", "ERP & CRM", [r"salesforce"]),
+    ("hubspot", "HubSpot", "ERP & CRM", [r"hubspot"]),
+    ("crm", "CRM systems", "ERP & CRM", [r"\bcrm\b", r"pipedrive", r"zoho"]),
+
+    # --- Business & finance -------------------------------------------------
+    ("accounting", "Accounting / Buchhaltung", "Business & Finance", [r"buchhaltung", r"rechnungswesen", r"accounting", r"bookkeeping", r"finanzbuchhaltung", r"kreditoren", r"debitoren", r"jahresabschluss"]),
+    ("controlling", "Controlling / Reporting", "Business & Finance", [r"controlling", r"\breporting", r"forecast", r"budgetierung", r"budgeting", r"kostenrechnung", r"abweichungsanalyse", r"variance analysis"]),
+    ("fin_model", "Financial modelling / valuation", "Business & Finance", [r"financial model", r"finanzmodell", r"valuation", r"unternehmensbewertung", r"\bdcf\b", r"business case", r"\bm&a\b", r"due diligence"]),
+    ("ifrs_hgb", "IFRS / HGB / US-GAAP", "Business & Finance", [r"\bifrs\b", r"\bhgb\b", r"us[- ]gaap"]),
+    ("tax", "Tax / Steuern", "Business & Finance", [r"steuerrecht", r"steuerberatung", r"umsatzsteuer", r"\btax\b", r"steuerl", r"steuererklärung"]),
+    ("audit", "Audit / Prüfung", "Business & Finance", [r"wirtschaftsprüfung", r"\baudit", r"interne revision", r"abschlussprüfung", r"internal control"]),
+    ("payroll", "Payroll / Lohnabrechnung", "Business & Finance", [r"lohnabrechnung", r"entgeltabrechnung", r"gehaltsabrechnung", r"payroll", r"lohn- und gehalt"]),
+    ("procurement", "Procurement / Einkauf", "Business & Finance", [r"einkauf", r"procurement", r"purchasing", r"beschaffung", r"lieferantenmanagement", r"supplier management"]),
+    ("supply_chain", "Supply chain / Logistics", "Business & Finance", [r"supply[- ]chain", r"logistik", r"logistics", r"lagerverwaltung", r"disposition", r"(?<!data )(?<!data-)warehouse", r"lieferkette"]),
+    ("project_mgmt", "Project management", "Business & Finance", [r"projektmanagement", r"project management", r"projektkoordination", r"project coordination", r"\bpmo\b", r"prince2", r"\bpmp\b"]),
+    ("agile", "Agile / Scrum", "Business & Finance", [r"\bscrum\b", r"\bagil", r"\bkanban\b", r"\bsafe\b(?=.{0,20}(?:agile|framework))"]),
+    ("lean", "Lean / Six Sigma", "Business & Finance", [r"\blean\b", r"six sigma", r"\bkaizen\b", r"\bkvp\b", r"kontinuierliche[rn]? verbesserung", r"continuous improvement"]),
+    ("process_mgmt", "Process management / BPMN", "Business & Finance", [r"prozessmanagement", r"process management", r"\bbpmn\b", r"prozessoptimierung", r"process optimi[sz]", r"prozessmodellierung", r"\bsignavio\b", r"\baris\b", r"\bcelonis\b", r"process mining"]),
+    ("market_research", "Market research", "Business & Finance", [r"marktforschung", r"marktanalyse", r"market research", r"market analysis", r"wettbewerbsanalyse", r"competitor analysis", r"umfrage", r"survey"]),
+    ("consulting", "Consulting skills", "Business & Finance", [r"unternehmensberatung", r"management consulting", r"strategieberatung", r"consulting"]),
+    ("recruiting", "Recruiting / Sourcing", "Business & Finance", [r"recruiting", r"recruitment", r"active sourcing", r"talent acquisition", r"personalbeschaffung", r"bewerbermanagement", r"\bats\b", r"personio", r"workday"]),
+    ("labour_law", "Law / Arbeitsrecht", "Business & Finance", [r"arbeitsrecht", r"labou?r law", r"vertragsrecht", r"juristisch", r"rechtswissenschaft", r"\blegal\b"]),
+
+    # --- Marketing & sales ----------------------------------------------------
+    ("seo", "SEO", "Marketing & Sales", [r"\bseo\b", r"suchmaschinenoptimierung", r"search engine optimi[sz]ation"]),
+    ("sea", "SEA / Google Ads", "Marketing & Sales", [r"\bsea\b", r"google ads", r"adwords", r"\bppc\b", r"paid search", r"suchmaschinenwerbung"]),
+    ("google_analytics", "Google Analytics / GTM", "Marketing & Sales", [r"google analytics", r"\bga4\b", r"tag manager", r"\bgtm\b", r"matomo", r"adobe analytics"]),
+    ("social_media", "Social media", "Marketing & Sales", [r"social[- ]media", r"instagram", r"tiktok", r"linkedin[- ]?(?:kampagne|campaign|ads|content|marketing)", r"community management"]),
+    ("paid_social", "Paid social / Meta Ads", "Marketing & Sales", [r"meta ads", r"facebook ads", r"paid social", r"linkedin ads", r"tiktok ads", r"performance marketing"]),
+    ("content", "Content creation / copywriting", "Marketing & Sales", [r"content[- ]?(?:creation|erstellung|marketing|produktion|production|management)", r"copywriting", r"texten\b", r"texterstellung", r"redaktion", r"redaktionell", r"storytelling", r"blogbeitr", r"blog post"]),
+    ("email_marketing", "E-mail marketing", "Marketing & Sales", [r"e-?mail[- ]?marketing", r"newsletter", r"mailchimp", r"brevo", r"klaviyo"]),
+    ("online_marketing", "Online / digital marketing", "Marketing & Sales", [r"online[- ]marketing", r"digital(?:es)?[- ]marketing", r"e-commerce", r"ecommerce", r"marketing automation"]),
+    ("pr", "PR / Communications", "Marketing & Sales", [r"\bpr\b", r"public relations", r"pressearbeit", r"öffentlichkeitsarbeit", r"unternehmenskommunikation", r"corporate communications"]),
+    ("event", "Event management", "Marketing & Sales", [r"eventmanagement", r"event[- ]?organisation", r"event management", r"veranstaltungs", r"\bmesse\b", r"messeauftritt", r"trade (?:fair|show)"]),
+    ("sales_skills", "Sales / Business development", "Marketing & Sales", [r"vertrieb", r"\bsales\b", r"business development", r"akquise", r"lead generation", r"leadgenerierung", r"kaltakquise", r"key account"]),
+    ("customer_service", "Customer service", "Marketing & Sales", [r"kundenservice", r"kundenbetreuung", r"customer service", r"customer support", r"customer success", r"kundensupport"]),
+
+    # --- Design & media ----------------------------------------------------
+    ("figma", "Figma", "Design & Media", [r"\bfigma\b"]),
+    ("sketch_xd", "Sketch / Adobe XD", "Design & Media", [r"adobe xd", r"(?-i:\bSketch\b)"]),
+    ("ux", "UX / UI design", "Design & Media", [r"\bux\b", r"\bui\b", r"user experience", r"user interface", r"usability", r"user research", r"wireframe", r"prototyp"]),
+    ("photoshop", "Photoshop", "Design & Media", [r"photoshop"]),
+    ("illustrator", "Illustrator", "Design & Media", [r"(?-i:\bIllustrator\b)", r"adobe illustrator"]),
+    ("indesign", "InDesign", "Design & Media", [r"indesign"]),
+    ("adobe_cc", "Adobe Creative Cloud", "Design & Media", [r"adobe creative", r"creative cloud", r"adobe[- ]suite", r"adobe cc\b", r"adobe[- ]programme"]),
+    ("canva", "Canva", "Design & Media", [r"\bcanva\b"]),
+    ("video", "Video editing", "Design & Media", [r"premiere", r"after effects", r"final cut", r"davinci", r"videobearbeitung", r"videoschnitt", r"video editing", r"videoproduktion", r"video production", r"capcut"]),
+    ("photography", "Photography", "Design & Media", [r"fotografie", r"photography", r"lightroom"]),
+    ("3d", "3D (Blender etc.)", "Design & Media", [r"\bblender\b", r"cinema ?4d", r"\b3ds max\b", r"\bmaya\b", r"3d[- ]modell", r"3d[- ]model", r"3d[- ]visuali"]),
+    ("graphic_design", "Graphic design", "Design & Media", [r"grafikdesign", r"graphic design", r"mediengestaltung", r"kommunikationsdesign", r"corporate design"]),
+
+    # --- Engineering --------------------------------------------------------
+    ("cad", "CAD (general)", "Engineering", [r"\bcad\b", r"\bcae\b"]),
+    ("catia", "CATIA", "Engineering", [r"\bcatia\b"]),
+    ("solidworks", "SolidWorks", "Engineering", [r"solid\s*works"]),
+    ("siemens_nx", "Siemens NX", "Engineering", [r"siemens nx", r"\bnx\b(?=.{0,20}(?:cad|konstruktion|catia|creo))", r"\bteamcenter\b"]),
+    ("creo", "Creo / Inventor", "Engineering", [r"\bcreo\b", r"pro/?engineer", r"\binventor\b"]),
+    ("autocad", "AutoCAD", "Engineering", [r"autocad"]),
+    ("bim", "BIM / Revit / ArchiCAD", "Engineering", [r"\bbim\b", r"\brevit\b", r"archicad", r"allplan", r"vectorworks"]),
+    ("fem", "FEM / Simulation (ANSYS, Abaqus)", "Engineering", [r"\bfem\b", r"\bfea\b", r"finite[- ]elemente?", r"ansys", r"abaqus", r"comsol", r"\bcfd\b", r"strömungssimulation"]),
+    ("simulink", "Simulink", "Engineering", [r"simulink"]),
+    ("labview", "LabVIEW", "Engineering", [r"labview"]),
+    ("plc", "PLC / SPS / TIA Portal", "Engineering", [r"\bsps\b", r"\bplc\b", r"tia[- ]portal", r"\bstep ?7\b", r"\bcodesys\b", r"beckhoff", r"twincat"]),
+    ("embedded", "Embedded systems", "Engineering", [r"embedded", r"mikrocontroller", r"microcontroller", r"\barm cortex", r"\brtos\b", r"firmware", r"\bstm32\b", r"arduino", r"raspberry"]),
+    ("pcb", "Electronics / PCB design", "Engineering", [r"leiterplatte", r"\bpcb\b", r"altium", r"\beagle\b", r"kicad", r"schaltungs?(?:entwicklung|design)", r"circuit design", r"elektronikentwicklung"]),
+    ("automotive", "Automotive (CAN, AUTOSAR)", "Engineering", [r"\bcan[- ]bus\b", r"(?-i:\bCAN\b)", r"autosar", r"canoe", r"\bvector\b(?=.{0,20}(?:canoe|tool))", r"\bhil\b", r"\bsil\b", r"iso 26262", r"aspice"]),
+    ("robotics", "Robotics / ROS", "Engineering", [r"\bros2?\b", r"robotik", r"robotics", r"\brobot"]),
+    ("quality", "Quality management (ISO 9001)", "Engineering", [r"qualitätsmanagement", r"quality management", r"iso 9001", r"\bfmea\b", r"\b8d\b", r"\biatf\b", r"qualitätssicherung", r"quality assurance"]),
+    ("production", "Production / manufacturing", "Engineering", [r"produktionsplanung", r"fertigungsplanung", r"manufacturing", r"\bmes\b", r"arbeitsvorbereitung", r"\bcnc\b"]),
+    ("energy", "Energy systems / PV", "Engineering", [r"photovoltaik", r"\bpv\b", r"erneuerbare energie", r"renewable energ", r"energiesystem", r"windenergie", r"wind energy", r"batteriespeicher", r"energy storage", r"wärmepumpe"]),
+    ("electrical", "Electrical engineering", "Engineering", [r"elektrotechnik", r"electrical engineering", r"elektroplanung", r"hochspannung", r"leistungselektronik", r"power electronics"]),
+    ("mechanical", "Mechanical design / Konstruktion", "Engineering", [r"konstruktion", r"mechanical design", r"technische zeichnung", r"technical drawing", r"maschinenbau"]),
+    ("gis", "GIS (ArcGIS, QGIS)", "Engineering", [r"\bgis\b", r"arcgis", r"\bqgis\b", r"geoinformation"]),
+
+    # --- Science & lab ----------------------------------------------------
+    ("lab", "Lab work", "Science & Lab", [r"laborarbeit", r"labortätigkeit", r"laborerfahrung", r"lab experience", r"laboratory", r"im labor\b"]),
+    ("chem_analytics", "HPLC / GC / MS analytics", "Science & Lab", [r"\bhplc\b", r"\bgc[- ]?ms\b", r"\blc[- ]?ms\b", r"chromatographie", r"chromatography", r"spektroskopie", r"spectroscopy"]),
+    ("molbio", "PCR / cell culture", "Science & Lab", [r"\bpcr\b", r"zellkultur", r"cell culture", r"\belisa\b", r"western blot", r"molekularbiolog", r"molecular biolog"]),
+    ("gmp", "GMP / Regulatory", "Science & Lab", [r"\bgmp\b", r"\bglp\b", r"regulatory affairs", r"\bmdr\b", r"medizinprodukt", r"medical device"]),
+    ("clinical", "Clinical research", "Science & Lab", [r"klinische[rn]? (?:studie|forschung)", r"clinical (?:trial|research|stud)", r"\bgcp\b(?=.{0,30}(?:clinical|klinisch|ich))"]),
+    ("research_methods", "Scientific research", "Science & Lab", [r"wissenschaftliche[sn]? arbeiten", r"literaturrecherche", r"literature research", r"scientific research", r"wissenschaftliche recherche"]),
+]
+
+
+SKILL_GROUPS = [
+    "Programming", "Web & Mobile", "Data & AI", "Cloud & DevOps", "IT & Security",
+    "Office & Tools", "ERP & CRM", "Business & Finance", "Marketing & Sales",
+    "Design & Media", "Engineering", "Science & Lab",
+]
+
+# Broad domain terms ("Einkauf", "Vertrieb", "Recruiting") also show up in company
+# blurbs, benefits ("5% Einkaufsrabatt"), URLs and degree names. For these a match
+# only counts when a requirement cue ("Kenntnisse", "Erfahrung", "experience"…)
+# is close by. Tool names (Excel, SAP, Python) are specific enough on their own.
+CONTEXT_REQUIRED = {
+    "recruiting", "sales_skills", "procurement", "supply_chain", "mechanical",
+    "electrical", "labour_law", "consulting", "customer_service", "audit", "tax",
+    "accounting", "controlling", "event", "pr", "market_research", "project_mgmt",
+    "energy", "quality", "production", "process_mgmt", "lean", "social_media",
+    "content", "online_marketing", "data_analysis", "it_security", "networking",
+    "research_methods", "lab", "graphic_design", "fin_model", "payroll",
+    "email_marketing", "it_support", "agile", "statistics", "dataviz", "ux",
+    "embedded", "robotics", "automotive", "gmp", "clinical",
+}
