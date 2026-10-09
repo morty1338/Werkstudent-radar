@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Werkstudent Radar</title>
+  <meta name="description" content="The German working-student job market in numbers: real hourly pay, skills in demand, and how many Werkstudent jobs you can get without German. Updated daily.">
+  <meta property="og:title" content="Werkstudent Radar">
+  <meta property="og:description" content="Real hourly pay, skills in demand and German requirements across all Werkstudent postings in Germany. Updated daily.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script type="module" src="assets/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="#top" aria-label="Werkstudent Radar, back to top">
+        <img src="favicon.svg" alt="" width="22" height="22">
+        <span>Werkstudent Radar</span>
+      </a>
+      <nav class="nav" aria-label="Sections">
+        <a href="#pay">Pay</a>
+        <a href="#german">German</a>
+        <a href="#skills">Skills</a>
+        <a href="#check">Check yourself</a>
+        <a href="#programmes">Programmes</a>
+        <a href="#trends">Trends</a>
+        <a href="#method">Method</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero wrap">
+      <p class="eyebrow">Germany · Werkstudent jobs only · updated daily</p>
+      <h1>The working-student market in numbers</h1>
+      <p class="lede">What Werkstudent jobs really pay per hour, which skills they ask for, and how many you can get without speaking German. Based on every Werkstudent posting on the job board of the <a href="https://www.arbeitsagentur.de/jobsuche/">Bundesagentur für Arbeit</a>.</p>
+      <p class="stale" id="stale" hidden></p>
+      <div class="tiles" id="tiles" aria-live="polite">
+        <div class="tile skeleton"></div><div class="tile skeleton"></div><div class="tile skeleton"></div><div class="tile skeleton"></div>
+      </div>
+      <p class="asof" id="asof"></p>
+    </section>
+
+    <section id="pay" class="wrap section">
+      <h2>Pay</h2>
+      <p class="section-lede" id="pay-lede"></p>
+      <div class="grid-2">
+        <figure class="card">
+          <figcaption>
+            <h3>Hourly pay distribution</h3>
+            <p class="hint">Postings that state an hourly rate, each role counted once.</p>
+          </figcaption>
+          <div id="pay-hist" class="chart"></div>
+        </figure>
+        <figure class="card">
+          <figcaption>
+            <h3>Median pay by field</h3>
+            <p class="hint">Bars without a value have too little pay data.</p>
+          </figcaption>
+          <div id="pay-fields" class="chart"></div>
+        </figure>
+      </div>
+      <figure class="card">
+        <figcaption>
+          <h3>Median pay by city</h3>
+          <p class="hint">Cities with at least 15 postings and enough pay data. Grey bars marked <span class="flag-key">†</span>: one employer supplies over a third of the pay data.</p>
+        </figcaption>
+        <div id="pay-cities" class="chart"></div>
+      </figure>
+    </section>
+
+    <section id="german" class="wrap section">
+      <h2>Do you need German?</h2>
+      <p class="section-lede" id="german-lede"></p>
+      <figure class="card">
+        <figcaption><h3>German requirement in postings</h3></figcaption>
+        <div id="german-stack"></div>
+      </figure>
+      <div class="grid-2">
+        <figure class="card">
+          <figcaption>
+            <h3>Open to non-German speakers, by field</h3>
+            <p class="hint">Share of postings where German is not needed or only a plus.</p>
+          </figcaption>
+          <div id="german-fields" class="chart"></div>
+        </figure>
+        <div class="card note">
+          <h3>Why so few?</h3>
+          <p>International companies and start-ups mostly hire through LinkedIn, StepStone or their own career pages, which can't be included here. The Bundesagentur's job board is used mostly by German employers, and most of them write their postings in German.</p>
+          <p>So read this as <em>“on the largest public job board, English-only Werkstudent jobs are rare”</em>, not as a figure for the whole market. The postings that do qualify are listed below.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="list-head">
+          <h3 id="ef-title">Postings open to non-German speakers</h3>
+          <div class="controls">
+            <label class="sr-only" for="ef-search">Search postings</label>
+            <input id="ef-search" type="search" placeholder="Search title, company, city">
+            <label class="sr-only" for="ef-field">Field</label>
+            <select id="ef-field"><option value="">All fields</option></select>
+          </div>
+        </div>
+        <div id="ef-list" class="job-list"></div>
+        <button class="more" id="ef-more" type="button" hidden>Show all</button>
+      </div>
+    </section>
+
+    <section id="skills" class="wrap section">
+      <h2>Skills in demand</h2>
+      <p class="section-lede" id="skills-lede"></p>
+      <div class="card">
+        <div class="list-head">
+          <h3>Most requested skills</h3>
+          <div class="controls">
+            <label class="sr-only" for="sk-field">Field</label>
+            <select id="sk-field"><option value="">All fields</option></select>
+            <label class="sr-only" for="sk-city">City</label>
+            <select id="sk-city"><option value="">All cities</option></select>
+          </div>
+        </div>
+        <p class="hint" id="sk-hint"></p>
+        <div id="sk-bars" class="chart"></div>
+      </div>
+      <figure class="card">
+        <figcaption>
+          <h3>Skills that come with higher pay</h3>
+          <p class="hint">Median hourly pay of postings asking for the skill, compared with the overall median. Skills with pay data from at least 10 roles and 5 employers.</p>
+        </figcaption>
+        <div id="sk-pay" class="chart"></div>
+      </figure>
+    </section>
+
+    <section id="check" class="wrap section">
+      <h2>Check your skills</h2>
+      <p class="section-lede">Tick what you can do. You'll see how many postings you already qualify for and which skill would open the most new ones. Nothing leaves your browser.</p>
+      <div class="checker">
+        <div class="card checker-input">
+          <div class="controls wrap-controls">
+            <label class="sr-only" for="ck-search">Find a skill</label>
+            <input id="ck-search" type="search" placeholder="Find a skill (e.g. SQL, SAP, Figma)">
+            <label class="sr-only" for="ck-field">Field</label>
+            <select id="ck-field"><option value="">All fields</option></select>
+            <label class="sr-only" for="ck-city">City</label>
+            <select id="ck-city"><option value="">All cities</option></select>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="ck-nogerman">
+            <span>I don't speak German well (only show postings where it isn't required)</span>
+          </label>
+          <div id="ck-chips" class="chip-groups"></div>
+          <div class="checker-actions">
+            <button type="button" class="more" id="ck-all">Show all skills</button>
+            <button type="button" class="link-btn" id="ck-clear">Clear selection</button>
+            <button type="button" class="link-btn" id="ck-share">Copy link to my selection</button>
+          </div>
+          <a class="ck-mini" id="ck-mini" href="#ck-result" hidden></a>
+        </div>
+        <aside class="card checker-result" id="ck-result" aria-live="polite"></aside>
+      </div>
+    </section>
+
+    <section id="programmes" class="wrap section">
+      <h2>By study programme</h2>
+      <p class="section-lede">Which postings mention your degree, what they pay and what they ask for. A posting can mention several programmes (“Wirtschaftsinformatik, Informatik or similar”).</p>
+      <div class="tabs" role="tablist" id="mj-tabs"></div>
+      <div class="card" id="mj-panel" role="tabpanel"></div>
+    </section>
+
+    <section id="trends" class="wrap section">
+      <h2>Trends</h2>
+      <p class="section-lede" id="trends-lede"></p>
+      <div class="grid-2">
+        <figure class="card">
+          <figcaption><h3>Werkstudent postings online</h3></figcaption>
+          <div id="tr-jobs" class="chart line-chart"></div>
+        </figure>
+        <figure class="card">
+          <figcaption><h3>Median hourly pay</h3></figcaption>
+          <div id="tr-pay" class="chart line-chart"></div>
+        </figure>
+      </div>
+    </section>
+
+    <section id="method" class="wrap section">
+      <h2>Method &amp; source</h2>
+      <div class="grid-2 method">
+        <div>
+          <h3>Data</h3>
+          <p>Every morning a script collects all postings for “Werkstudent”, “Working Student” and “Werkstudierende” in Germany from the public job search of the <a href="https://www.arbeitsagentur.de/jobsuche/">Bundesagentur für Arbeit</a>. Only postings with one of these words in the title are kept.</p>
+          <p>Job texts are analysed but never stored in public or shown here: they belong to the employers. This page only shows aggregated numbers, titles, company names and links to the original postings.</p>
+          <h3>Not included</h3>
+          <p>Postings that exist only on LinkedIn, StepStone, Indeed or company career pages. Large international employers are therefore underrepresented, especially for English-speaking roles.</p>
+        </div>
+        <div>
+          <h3>How the numbers are made</h3>
+          <ul>
+            <li><strong>Pay</strong> comes from the posting's salary fields or from phrases like “17,50 € brutto pro Stunde”. Each role (company + title) counts once, so an employer posting the same role in 97 cities doesn't dominate. A median needs at least 10 roles from 5 employers.</li>
+            <li><strong>German</strong> is <em>required</em> for phrases like “fließend Deutsch” or “German C1”, <em>a plus</em> for “von Vorteil” or “nice to have”, and <em>not needed</em> for “English only” or English postings that never ask for it. German postings that don't mention it are counted as needing German.</li>
+            <li><strong>Skills</strong> are matched against a dictionary of ~180 skills with German and English synonyms. Broad terms like “Vertrieb” only count next to words like “Kenntnisse” or “experience”.</li>
+          </ul>
+          <p>These are rules, not a human reading every posting. They were checked by hand on samples of real postings and are covered by tests. Code and data: <a href="https://github.com/morty1338/werkstudent-radar">github.com/morty1338/werkstudent-radar</a>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>Werkstudent Radar · data: Bundesagentur für Arbeit (Jobbörse) · <a href="https://github.com/morty1338/werkstudent-radar">source code</a></p>
+    </div>
+  </footer>
+
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+  <noscript><p class="wrap">This page needs JavaScript to load the data.</p></noscript>
+</body>
+</html>
