@@ -1,0 +1,112 @@
+name: Daily data update
+
+on:
+  schedule:
+    # 04:23 UTC = 06:23 in Berlin (05:23 in winter). Off the full hour, when
+    # GitHub's scheduler is busiest and runs get delayed or dropped.
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the new data
+  issues: write     # open an issue when the run fails
+
+concurrency:
+  group: daily-data
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set log path
+        run: echo "LOG=$RUNNER_TEMP/pipeline.log" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Collect postings
+        run: python -m radar.collect 2>&1 | tee -a "$LOG"
+
+      - name: Extract features from new postings
+        run: python -m radar.enrich 2>&1 | tee -a "$LOG"
+
+      - name: Build aggregates
+        run: python -m radar.build 2>&1 | tee -a "$LOG"
+
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/jobs.csv data/history.csv docs/data
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          as_of=$(python -c "import json; print(json.load(open('docs/data/summary.json'))['as_of'])")
+          git commit -m "Update data for ${as_of}"
+          git pull --rebase origin main
+          git push
+
+      - name: Report failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'Daily data update failed';
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            let log = '';
+            try {
+              log = fs.readFileSync(process.env.LOG, 'utf8').trim().split('\n').slice(-40).join('\n');
+            } catch (e) {
+              log = '(no pipeline log; the run failed before the pipeline started)';
+            }
+            const body = [
+              `The run on ${new Date().toISOString().slice(0, 10)} failed: ${run}`,
+              '',
+              'Last lines of the log:',
+              '```',
+              log,
+              '```',
+              '',
+              'Common causes: the Bundesagentur API changed (new version, 403 on an old path), ',
+              'it was temporarily down, or far fewer postings came back than usual.',
+            ].join('\n');
+
+            const { data: open } = await github.rest.issues.listForRepo({
+              ...context.repo, state: 'open', creator: 'github-actions[bot]', per_page: 100,
+            });
+            const existing = open.find(i => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ ...context.repo, title, body });
+            }
+
+      - name: Close failure issue after a successful run
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: open } = await github.rest.issues.listForRepo({
+              ...context.repo, state: 'open', creator: 'github-actions[bot]', per_page: 100,
+            });
+            for (const issue of open.filter(i => i.title === 'Daily data update failed')) {
+              const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+              await github.rest.issues.createComment({ ...context.repo, issue_number: issue.number, body: `Recovered: ${run}` });
+              await github.rest.issues.update({ ...context.repo, issue_number: issue.number, state: 'closed' });
+            }

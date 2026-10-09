@@ -1,5 +1,8 @@
 # Werkstudent Radar
 
+[![Daily data update](https://github.com/morty1338/werkstudent-radar/actions/workflows/daily.yml/badge.svg)](https://github.com/morty1338/werkstudent-radar/actions/workflows/daily.yml)
+[![Tests](https://github.com/morty1338/werkstudent-radar/actions/workflows/tests.yml/badge.svg)](https://github.com/morty1338/werkstudent-radar/actions/workflows/tests.yml)
+
 The German working-student job market in numbers: real hourly rates, which
 skills are in demand, and how many jobs you can get without speaking German.
 
@@ -7,7 +10,7 @@ Data source: the public job search of the
 [Bundesagentur für Arbeit](https://www.arbeitsagentur.de/jobsuche/).
 Only Werkstudent postings in Germany are collected.
 
-> Work in progress. Currently: collection, feature extraction and SQL aggregates.
+> Work in progress. Currently: daily automated collection, feature extraction and SQL aggregates.
 
 ## Quick start
 
@@ -96,6 +99,26 @@ Outputs:
 | `docs/data/checker.json` | per posting: field, city, German level, pay and skill indices, for the in-browser skill checker |
 | `docs/data/history.json` | daily series built from `data/history.csv` |
 | `data/history.csv` | one row per day × metric (`total`, `category`, `city`, `skill`, `major`, `german`). Which postings were online on a given day can't be reconstructed later, so this is collected from day one. |
+
+## Automation
+
+[`daily.yml`](.github/workflows/daily.yml) runs every morning (04:23 UTC) and
+can be started by hand from the Actions tab:
+
+1. `collect` → `enrich` → `build`. Only new postings need their text, so a
+   normal day takes about a minute.
+2. Commits `data/jobs.csv`, `data/history.csv` and `docs/data/` as
+   `github-actions[bot]` ("Update data for YYYY-MM-DD").
+3. If any step fails, opens an issue "Daily data update failed" with the last
+   40 log lines and a link to the run (GitHub notifies by e-mail). Further
+   failures comment on the same issue; the next successful run closes it.
+
+The run fails on purpose when the data looks wrong: an API path answering
+403/404 (old versions get switched off), fewer than 1,000 postings, fewer than
+half of the previous day's, or more than half of the job texts missing.
+
+[`tests.yml`](.github/workflows/tests.yml) runs the test suite on every push
+and pull request.
 
 ## Accuracy
 
