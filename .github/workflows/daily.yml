@@ -38,6 +38,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # Font for the social preview image (usually preinstalled on the runner;
+      # without it the image falls back to Pillow's font and writes "EUR").
+      - name: Make sure DejaVu fonts are installed
+        run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core || true
+
       - name: Collect postings
         run: python -m radar.collect 2>&1 | tee -a "$LOG"
 

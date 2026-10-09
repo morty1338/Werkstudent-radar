@@ -10,6 +10,7 @@ runs the queries in sql/*.sql and writes:
     docs/data/checker.json   compact per-job skill lists for the in-browser skill checker
     docs/data/postings.json  title, company and city per checker job (loaded on demand)
     docs/data/history.json   daily time series for the trend charts
+    docs/data/og.png         social preview image with today's headline numbers
     data/history.csv         today's snapshot appended (one row per metric and day)
 
 The snapshot matters: which postings were online on a given day, and what they
@@ -23,6 +24,7 @@ import sqlite3
 from collections import defaultdict
 from datetime import datetime, timezone
 
+from . import og_image
 from .extract import CATEGORIES, MAJORS
 from .skills import SKILLS
 
@@ -335,6 +337,9 @@ def main():
     for name, data in outputs:
         path = write_json(name, data)
         print(f"wrote {os.path.relpath(path, ROOT)} ({os.path.getsize(path) / 1024:.0f} KB)")
+
+    path = og_image.render(summary, os.path.join(OUT_DIR, "og.png"))
+    print(f"wrote {os.path.relpath(path, ROOT)} ({os.path.getsize(path) / 1024:.0f} KB)")
 
     t = summary["totals"]
     print(f"{summary['as_of']}: {t['jobs']} jobs, median {t['median_pay']} €/h (n={t['with_pay']}), "
