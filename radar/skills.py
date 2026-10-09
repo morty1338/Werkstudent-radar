@@ -11,7 +11,7 @@ are then re-fetched and re-tagged on the next run.
 
 SKILLS = [
     # --- Programming languages -------------------------------------------
-    ("python", "Python", "Programming", [r"\bpython\b"]),
+    ("python", "Python", "Programming", [r"\bpython\b", r"\bphyton\b"]),  # common typo in postings
     ("java", "Java", "Programming", [r"\bjava\b(?!\s*script)"]),
     ("javascript", "JavaScript", "Programming", [r"java\s*script", r"\bjs\b", r"ecmascript"]),
     ("typescript", "TypeScript", "Programming", [r"type\s*script"]),

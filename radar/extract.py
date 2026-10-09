@@ -10,7 +10,7 @@ from .skills import CONTEXT_REQUIRED, SKILLS
 
 # Bump whenever skills.py or the rules below change. Active jobs tagged with an
 # older version are re-fetched and re-tagged on the next run.
-EXTRACTOR_VERSION = 2
+EXTRACTOR_VERSION = 3
 
 _FLAGS = re.IGNORECASE
 
@@ -68,18 +68,21 @@ _DEUTSCH = r"deutsch(?!land|en? (?:markt|kunden|unternehmen|standort))"
 
 _REQ = [
     rf"{_ADJ_DE}\s+(?:[\w\-/]+\s+){{0,3}}{_DEUTSCH}",
-    rf"{_DEUTSCH}\w*\s*(?:\(|-|:|–|auf|mind\.?|mindestens|niveau|level|sprachniveau|\s)*\s*(?:a2|b1|b2|c1|c2)\b",
+    rf"{_DEUTSCH}\w*\s*(?:\(|\[|-|:|–|auf|mind\.?|mindestens|niveau|level|sprachniveau|\s)*\s*(?:a2|b1|b2|c1|c2)\b",
+    rf"(?:kommunizierst|sprichst|sprechen|kommunizieren|verständigen?)\s+(?:\w+\s+){{0,3}}(?:auf|in)\s+deutsch\b",
     rf"{_DEUTSCH}\w*\s*[:\-–]?\s*(?:in wort und schrift|flie(?:ß|ss)end|verhandlungssicher|auf muttersprach|als muttersprache|sehr gut|gut\b)",
     rf"{_DEUTSCH}\w*\s*(?:und|&|,|sowie)\s*englisch\w*\s*[:\-–]?\s*(?:\(|jeweils\s+)?(?:sehr gut|gut\b|flie|verhandlungssicher|in wort und schrift|auf (?:c1|b2)|c1|b2)",
     r"(?:beherrschung|kenntnisse) der deutschen sprache",
     r"deutsche[n]? sprache\s+(?:in wort und schrift|flie|verhandlungssicher|sicher|sehr gut)",
     r"(?:fluent|fluency|proficien\w*|excellent|very good|strong|good|business[- ]fluent|business[- ]level|native|full professional)\s+"
-    r"(?:(?:command|knowledge|skills|level|proficiency)\s+(?:of|in)\s+|in\s+|both\s+|written and spoken\s+|spoken and written\s+|the\s+|english and\s+|english &\s+)*"
+    r"(?:(?:command|knowledge|skills|level|proficiency)\s+(?:of|in)\s+|in\s+|both\s+|business\s+|written and spoken\s+|spoken and written\s+|the\s+|english and\s+|english &\s+)*"
     r"german(?!\s+(?:market|compan|customer|client|law|tax|labou?r|office|team|site|subsidiar|branch|speaking market|start|mittelstand|engineering|automotive|industr))",
     r"german\s*(?:\(|-|:|–|at|level|language)?\s*(?:level\s*)?(?:c1|c2|b2)\b",
     r"german (?:language )?(?:skills )?(?:is |are )?(?:required|mandatory|a must|essential|necessary)",
     r"german and english\s*(?:\(|,|-|–|:)?\s*(?:fluent|c1|both|in word)",
     r"must speak german",
+    r"language skills?\s*[:\-–]\s*(?:english\s*(?:&|and|,|und)\s*)?german\b",
+    r"basic (?:understanding|knowledge|skills?) (?:in|of) german",
 ]
 _REQ_RX = re.compile("|".join(f"(?:{p})" for p in _REQ), _FLAGS)
 
@@ -89,7 +92,7 @@ _SOFTENER_BEFORE = re.compile(r"(?:idealerweise|ideally|optional|nice[- ]to[- ]h
 _PLUS = re.compile(
     "|".join([
         rf"{_DEUTSCH}\w*\s+(?:[\w\-/]+\s+){{0,5}}(?:sind |ist |wären |wäre )?(?:von vorteil|wünschenswert|willkommen|ein plus|nice to have)",
-        r"german\s+(?:[\w\-/]+\s+){0,5}(?:is a plus|a plus|nice[- ]to[- ]have|beneficial|advantageous|an advantage|desirable|welcome|is a bonus|helpful|preferred)",
+        r"german\s*(?:[\w\-/,]+\s+){0,6}(?:is a plus|a plus|nice[- ]to[- ]have|beneficial|advantageous|an advantage|a strong advantage|a big advantage|desirable|welcome|is a bonus|helpful|preferred)",
         r"(?:nice[- ]to[- ]have|bonus|plus)\s*[:\-–]?\s+(?:\S+\s+){0,4}german",
     ]),
     _FLAGS,
@@ -116,8 +119,14 @@ _NOT_REQ = re.compile(
 # Deutschkenntnisse, gute Englischkenntnisse von Vorteil" the "von Vorteil"
 # belongs to English, not German.
 _ITEM_SEPARATORS = "\n•;✓✔|"
+_OTHER_LANGUAGE = (
+    r"(?:englisch|english|französisch|french|spanisch|spanish|italienisch|italian|russisch|russian"
+    r"|ukrainisch|ukrainian|polnisch|polish|türkisch|turkish|arabisch|arabic|chinesisch|chinese"
+    r"|niederländisch|dutch|portugiesisch|portuguese)"
+)
 _CLAUSE_END = re.compile(
-    rf"[{_ITEM_SEPARATORS}]|\.\s|\s[-*–]\s|,\s*(?:[\w-]+\s+){{0,2}}(?:englisch|english)"
+    rf"[{_ITEM_SEPARATORS}]|\.\s|\s[-*–]\s|,\s*(?:[\w-]+\s+){{0,2}}{_OTHER_LANGUAGE}"
+    rf"|\s(?:und|sowie|and|as well as)\s+(?:[\w-]+\s+){{1,2}}{_OTHER_LANGUAGE}"
     r"|(?:weitere|andere|zusätzliche|other|additional|further)\s+(?:fremd)?sprach|(?:other|additional|further)\s+languages",
     _FLAGS,
 )
@@ -136,6 +145,7 @@ def _clause_before(text, pos):
 
 
 def german_requirement(text, lang):
+    text = text.replace("#", "").replace("**", "")
     hard = False
     soft = False
     for m in _REQ_RX.finditer(text):
@@ -188,7 +198,8 @@ _HOURLY_BEFORE = re.compile(
     _FLAGS,
 )
 _MONEY = re.compile(
-    rf"(?:{_CUR}\s*{_NUM}(?:\s*(?:-|–|bis|to)\s*{_CUR}?\s*{_NUM})?)"
+    rf"(?:(?:zwischen|between)\s*{_CUR}?\s*{_NUM}\s*{_CUR}?\s*(?:und|and)\s*{_CUR}?\s*{_NUM}\s*{_CUR})"
+    rf"|(?:{_CUR}\s*{_NUM}(?:\s*(?:-|–|bis|to)\s*{_CUR}?\s*{_NUM})?)"
     rf"|(?:{_NUM}(?:\s*{_CUR})?\s*(?:-|–|bis|to)\s*{_NUM}\s*{_CUR})"
     rf"|(?:{_NUM}\s*{_CUR})",
     _FLAGS,
@@ -279,26 +290,29 @@ def find_majors(text):
 # --- Job field ----------------------------------------------------------------
 
 CATEGORIES = [
-    ("data", "Data & Analytics", r"\bdata\b|daten|analytics|analyst|business intelligence|\bbi\b|machine learning|\bki\b|\bai\b|künstliche intelligenz|artificial intelligence|statisti"),
-    ("it", "IT & Software", r"software|entwickler|developer|programmier|informatik|frontend|front-end|backend|back-end|full.?stack|devops|cloud|web.?entwickl|webentwickl|cyber|it.?security|it.?sicherheit|\bsap\b|salesforce|netzwerk|network|systemadministr|system engineer|anwendungsentwickl|application|it-support|it support|it-service|it-infrastr|it-projekt|it-consult|digitalisierung|\bapp\b|qa engineer|test engineer|\bqa\b"),
-    ("hr", "HR & Recruiting", r"\bhr\b|human resources|personal(?!ent)|recruit|talent|people (?:&|and) culture|people operations"),
-    ("finance", "Finance & Controlling", r"financ|finanz|controlling|accounting|buchhalt|bilanz|rechnungswesen|steuer|\btax\b|audit|prüfung|treasury|wirtschaftsprüf|bank|investment|private equity|m&a|corporate finance|risk"),
-    ("marketing", "Marketing & Communication", r"marketing|social media|content|kommunikation|communication|\bpr\b|presse|seo|brand|redaktion|editor|e-commerce|ecommerce|online.?shop|community|influencer|events?\b|eventmanagement"),
-    ("retail", "Retail & Hospitality", r"verkäuf|verkauf|einzelhandel|kassier|kasse|filial|\bstore\b|shop assistant|gastronom|hotel|restaurant|kellner|barista|küche|service-?kraft|servicemitarbeit|lagerhelfer|kommissionier|aushilfe"),
+    ("data", "Data & Analytics", r"\bdata\b|daten(?!schutz)|analytics|analyst|business intelligence|\bbi\b|machine learning|künstliche intelligenz|artificial intelligence|statisti"),
+    ("hr", "HR & Recruiting", r"\bhr\b|human resources|\bpersonal(?!\s+(?:assist|trainer|training|shopper|care|banking|finance))|recruit|talent|people (?:&|and) culture|people operations"),
+    ("it", "IT & Software", r"software|entwickler|developer|programmier|informatik|frontend|front-end|backend|back-end|full.?stack|devops|cloud|web.?entwickl|webentwickl|cyber|it.?security|it.?sicherheit|\bsap\b|salesforce|netzwerk|network|systemadministr|system engineer|anwendungsentwickl|application|it-support|it support|it-service|it-infrastr|it-projekt|it-consult|digitalisierung|\bapp\b|qa engineer|test engineer|\bqa\b|copilot|azure|m365|rechenzentrum|data cent(?:er|re)|digitali[sz]ation|\btechnology\b"),
+    ("finance", "Finance & Controlling", r"financ|finanz|controlling|accounting|buchhalt|kreditor|debitor|bilanz|rechnungswesen|steuer|\btax\b|audit|prüfung|treasury|wirtschaftsprüf|bank|investment|private equity|m&a|corporate finance|risk"),
+    ("design", "Design & UX", r"design(?!.{0,10}engineer)|\bux\b|\bui\b|grafik|graphic|video|foto|photo|medien(?:gestalt|produkt)"),
+    ("marketing", "Marketing & Communication", r"marketing|social media|content|kommunikation|communication|\bpr\b|presse|seo|brand|redaktion|\beditor|e-commerce|ecommerce|online.?shop|community|influencer|events?\b|eventmanagement"),
+    ("retail", "Retail & Hospitality", r"verkäuf|verkauf|einzelhandel|outlet|kassier|kasse|filial|\bstore\b|shop assistant|gastronom|hotel|restaurant|kellner|barista|küche|service-?kraft|servicemitarbeit|lagerhelfer|kommissionier|aushilfe"),
     ("sales", "Sales & Business Development", r"sales|vertrieb|business development|key account|account manag|customer success|kundenbetreuung|kundenberatung|kundenservice|customer service|innendienst|ankauf"),
     ("consulting", "Consulting & Strategy", r"consult|unternehmensberat|strategieberat|managementberat|it-beratung|steuerberat|beratung|strateg"),
     ("product", "Product & Project Mgmt", r"project|projekt|product manag|produktmanag|product owner|pmo|programm.?manag"),
-    ("design", "Design & UX", r"design(?!.{0,10}engineer)|\bux\b|\bui\b|grafik|graphic|video|foto|photo|medien(?:gestalt|produkt)"),
-    ("engineering", "Engineering & Production", r"ingenieur|engineering|konstruktion|mechani|elektro|electr|maschinenbau|produktion|production|qualität|quality|fertigung|automotive|fahrzeug|vehicle|hardware|embedded|energie|energy|bau|architekt|statik|statiker|technik|technisch|technical|anlagen|maschinen|simulation|test(?:ing)?\b|r&d|forschung und entwicklung|verfahrenstechn|robot"),
+    ("engineering", "Engineering & Production", r"ingenieur|engineering|konstruktion|mechani|elektro|electr|maschinenbau|produktion|production|qualität|quality|fertigung|automotive|fahrzeug|fahrwerk|adas|inbetriebnahme|vehicle|hardware|embedded|energie|energy|bau|architekt|statik|statiker|technik|technisch|technical|anlagen|maschinen|simulation|test(?:ing)?\b|r&d|forschung und entwicklung|verfahrenstechn|robot"),
     ("ops", "Operations & Logistics", r"logistik|logistics|supply chain|einkauf|procurement|purchasing|operations|lager|warehouse|disposition|beschaffung|facility|immobilien|real estate"),
     ("research", "Research & Science", r"forschung|research|labor|\blab\b|chemi|biolog|physik|physics|pharma|klinisch|clinical|wissenschaft"),
-    ("education", "Education & Social", r"pädagog|erzieh|lehrer|lehrkraft|tutor|nachhilfe|dozent|sozial|berufsberat|schul|kita|betreuer|jugend|teaching|education"),
+    ("education", "Education & Social", r"pädagog|erzieh|lehrer|lehrkraft|tutor|nachhilfe|dozent|sozial|berufsberat|(?<!hoch)schul|kita|betreuer|jugend|teaching|education"),
     ("health", "Health & Care", r"arzt|ärzt|medizin|pflege|therap|apothe|gesundheit|klinik|praxis|health|care\b|rettung|psycholog"),
-    ("admin", "Office & Admin", r"assistenz|assistant|office|büro|verwaltung|sekretariat|empfang|administration|backoffice|sachbearbeit"),
+    ("admin", "Office & Admin", r"assistenz|assistant|office|büro(?:manag|assist|kauf|organisation|arbeit|tätig)|verwaltung|sekretariat|empfang|administration|backoffice|sachbearbeit"),
     ("legal", "Legal", r"\blegal\b|recht|jurist|compliance|datenschutz|privacy"),
 ]
 _CAT_RX = [(cid, re.compile(rx, _FLAGS)) for cid, _, rx in CATEGORIES]
 _IT_UPPER = re.compile(r"(?<![A-Za-z])IT(?![a-z])")
+# "KI"/"AI" alone says little about the field ("AI Search" in marketing, "KI-Transformation"
+# in HR), so it only decides when nothing more specific matched.
+_AI = re.compile(r"\bki\b|\bai\b", _FLAGS)
 
 
 def classify(title, hauptberuf):
@@ -311,6 +325,8 @@ def classify(title, hauptberuf):
         for cid, rx in _CAT_RX:
             if rx.search(source):
                 return cid
+        if _AI.search(source):
+            return "it"
     return "other"
 
 

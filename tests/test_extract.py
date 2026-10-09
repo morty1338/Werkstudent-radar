@@ -221,3 +221,74 @@ def test_idealerweise_german_is_plus():
 ])
 def test_other_languages_softener_is_not_about_german(text):
     assert german(text) == "required"
+
+
+# --- Regressions from the hand-labelled evaluation sample (data/eval) -----------
+
+@pytest.mark.parametrize("text", [
+    "Fließende Deutsch- und Englischkenntnisse, Russisch und Ukrainisch von Vorteil",
+    "Fluent in English and German, French is beneficial but not required.",
+    "Verhandlungssichere Deutschkenntnisse und wünschenswert gute Englischkenntnisse",
+    "Language skills: English & German",
+    "You are fluent in business English and German (spoken and written).",
+    "Du kommunizierst auf Deutsch und Englisch",
+    "Du bringst sehr gute #Deutsch- und Englischkenntnisse mit",
+    "Deutsch- ([A2-Niveau](https://example.org)) und Englischkenntnisse",
+    "You communicate fluent in English with a basic understanding in German.",
+])
+def test_german_required_eval_regressions(text):
+    assert german(text) == "required"
+
+
+@pytest.mark.parametrize("text", [
+    "German language skills are a strong advantage.",
+    "English fluency is a must, proficiency in French, German, Spanish or any other language is a plus.",
+    "Gute Deutsch- und Englischkenntnisse sind von Vorteil",
+])
+def test_german_plus_eval_regressions(text):
+    assert german(text) == "plus"
+
+
+def test_pay_range_with_zwischen_und():
+    text = "Wir bieten für diese Position einen Stundenlohn zwischen 14,50 € und 16,00 €."
+    assert hourly_pay_from_text(text) == (14.5, 16.0)
+
+
+def test_python_typo():
+    assert "python" in find_skills("Kenntnisse in Phyton wünschenswert")
+
+
+@pytest.mark.parametrize("title,beruf,expected", [
+    ("Werkstudent Datenschutz (m/w/d)", "Datenschutzbeauftragte/r", "legal"),
+    ("Werkstudent Steuerliches Rechenzentrum (w/m/d)", "", "it"),
+    ("Werkstudent Kommunikationsdesign (m/w/d)", "", "design"),
+    ("Werkstudent*in Personalentwicklung & KI-Transformation", "", "hr"),
+    ("Werkstudent*in Cyber Security, SIEM & AI Security", "", "it"),
+    ("Werkstudent / Sales Assistant (m/w/d) - Outlet", "Verkäufer/in", "retail"),
+    ("Werkstudent Kreditorenmanagement in der WEG-Verwaltung", "", "finance"),
+    ("Werkstudent (m/w/d) Digitalization & Technology", "Kaufmann/-frau - Büromanagement", "it"),
+    ("Werkstudent Marktspezifische Sortimente", "Betriebswirt/in (Hochschule)", "other"),
+    ("Werkstudent/in (m/w/d) 36, GIC Büro Köln", "Geoinformatiker/in", "it"),
+    ("Werkstudent Data Analytics", "", "data"),
+])
+def test_classify_eval_regressions(title, beruf, expected):
+    assert classify(title, beruf) == expected
+
+
+@pytest.mark.parametrize("title,expected", [
+    ("Werkstudent Personalentwicklung", "hr"),
+    ("Werkstudent im Bereich Personal (m/w/d)", "hr"),
+    ("Werkstudent Personal Assistant to the CEO", "admin"),
+])
+def test_classify_personal(title, expected):
+    assert classify(title, "") == expected
+
+
+@pytest.mark.parametrize("title,beruf,expected", [
+    ("Werkstudent Digital Marketing (PR & AI Search)", "", "marketing"),
+    ("Werkstudent KI & Digitalisierung (m/w/d)", "", "it"),
+    ("Werkstudent (m/w/d)", "Personaldienstleistungskaufmann/-frau", "hr"),
+    ("Werkstudent Personalvermittlung (m/w/d)", "", "hr"),
+])
+def test_classify_ai_fallback_and_personal(title, beruf, expected):
+    assert classify(title, beruf) == expected
