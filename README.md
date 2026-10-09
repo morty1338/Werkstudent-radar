@@ -10,7 +10,14 @@ Data source: the public job search of the
 [Bundesagentur für Arbeit](https://www.arbeitsagentur.de/jobsuche/).
 Only Werkstudent postings in Germany are collected.
 
-> Work in progress. Currently: daily automated collection, feature extraction and SQL aggregates.
+**Live: [morty1338.github.io/werkstudent-radar](https://morty1338.github.io/werkstudent-radar/)**, updated every morning.
+
+- **Pay**: median hourly rate by field and city, from the rates stated in postings
+- **German**: how many postings are open to non-German speakers, with the full list
+- **Skills**: what's asked for, by field and city, and which skills come with higher pay
+- **Check your skills**: tick what you can do, see the share of postings you match and which skill opens the most new ones
+- **Study programmes**: Wirtschaftsinformatik, Informatik, BWL, Wirtschaftsingenieurwesen and more
+- **Trends**: daily snapshots from 9 Oct 2026 on
 
 ## Quick start
 
@@ -117,8 +124,25 @@ The run fails on purpose when the data looks wrong: an API path answering
 403/404 (old versions get switched off), fewer than 1,000 postings, fewer than
 half of the previous day's, or more than half of the job texts missing.
 
+[`pages.yml`](.github/workflows/pages.yml) publishes `docs/` to GitHub Pages.
+It runs on pushes that change the site and is called by the daily workflow
+after each data update, because commits pushed with `GITHUB_TOKEN` don't
+trigger Pages builds on their own.
+
 [`tests.yml`](.github/workflows/tests.yml) runs the test suite on every push
 and pull request.
+
+## Website (`docs/`)
+
+A static page in plain HTML, CSS and JavaScript (no framework, no build step,
+no third-party scripts), so it loads instantly and costs nothing to host. It
+reads the three JSON files in `docs/data/`; the skill checker runs entirely in
+the browser on `checker.json`. Charts are hand-made HTML/SVG with light and
+dark themes. To preview locally:
+
+```bash
+python3 -m http.server --directory docs
+```
 
 ## Accuracy
 
@@ -143,6 +167,7 @@ radar/sql/         schema and one query per output
 tests/             rule tests on made-up snippets, SQL tests on a tiny fixture
 data/jobs.csv      extracted features (committed)
 data/history.csv   daily metric snapshots (committed)
+docs/              the website (index.html, assets/)
 docs/data/         JSON consumed by the website
 data/raw/          local raw dumps, one folder per day (not committed)
 ```
