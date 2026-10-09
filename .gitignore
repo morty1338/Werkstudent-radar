@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Raw API dumps stay local (they are large and contain employer data)
+data/raw/
+
+# Local work in progress
+_drafts/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
