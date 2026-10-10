@@ -5,6 +5,9 @@ on:
     # 04:23 UTC = 06:23 in Berlin (05:23 in winter). Off the full hour, when
     # GitHub's scheduler is busiest and runs get delayed or dropped.
     - cron: "23 4 * * *"
+    # Catch-up run: GitHub doesn't guarantee scheduled runs and sometimes
+    # skips one. This run only does the work if the morning one didn't.
+    - cron: "23 16 * * *"
   workflow_dispatch:
 
 permissions:
@@ -20,7 +23,33 @@ defaults:
     shell: bash
 
 jobs:
+  # Decide whether today's data still has to be collected. Only the afternoon
+  # catch-up run checks; a second full run on the same day would also keep
+  # postings removed during the day as "online today".
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.today.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: data/history.csv
+          sparse-checkout-cone-mode: false
+
+      - id: today
+        name: Is today's data already in?
+        run: |
+          today=$(TZ=Europe/Berlin date +%F)
+          if [ "${{ github.event.schedule }}" = "23 16 * * *" ] && grep -q "^${today}," data/history.csv; then
+            echo "Data for ${today} is already in; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   update:
+    needs: check
+    if: needs.check.outputs.skip != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
 

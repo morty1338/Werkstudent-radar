@@ -125,7 +125,9 @@ Outputs:
 ## Automation
 
 [`daily.yml`](.github/workflows/daily.yml) runs every morning (04:23 UTC) and
-can be started by hand from the Actions tab:
+can be started by hand from the Actions tab. GitHub doesn't guarantee scheduled
+runs, so a catch-up run at 16:23 UTC does the work only if the morning one
+didn't happen (it checks `data/history.csv` for today's date):
 
 1. `collect` → `enrich` → `build`. Only new postings need their text, so a
    normal day takes about a minute.
