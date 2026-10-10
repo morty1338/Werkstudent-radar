@@ -22,3 +22,7 @@ _drafts/
 
 # Built from data/jobs.csv and data/history/*.csv by radar.history
 data/history.sqlite
+
+# NLP experiment: its virtualenv and the downloaded model
+experiments/.venv/
+experiments/.cache/
