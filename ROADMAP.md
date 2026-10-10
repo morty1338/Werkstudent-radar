@@ -35,12 +35,13 @@ Rules for every phase:
 
 ## Phase 2 — Quality: tests + data checks
 
-- [ ] pytest for pay parsing ("17,50 € pro Stunde" etc.), skill/German detection,
+- [x] pytest for pay parsing ("17,50 € pro Stunde" etc.), skill/German detection,
       dedup and the upsert logic (extend the existing 133 tests where they already cover it).
-- [ ] Data-quality checks in the pipeline: fail the run if the posting count drops or
+- [x] Data-quality checks in the pipeline: fail the run if the posting count drops or
       jumps >50% vs. the 7-day median, required API fields are missing, or pay values
       fall outside a sane range. A failing run opens/updates the GitHub issue.
-- [ ] Tests in CI on every push (exists: `tests.yml`) and a status badge in the README.
+- [x] Tests in CI on every push (`tests.yml`, now without the data-only path filter) and a
+      status badge in the README (both badges already existed).
 
 ## Phase 3 — Statistics
 

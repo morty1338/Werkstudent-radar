@@ -47,6 +47,7 @@ python3 -m venv .venv
 .venv/bin/python -m radar.arbeitnow # 1b. company career sites (a few minutes, paced)
 .venv/bin/python -m radar.enrich    # 2. job texts -> features in data/jobs.csv (~2 min on the first run)
 .venv/bin/python -m radar.history   # 3. today's scan -> data/history/*.csv, data/history.sqlite
+.venv/bin/python -m radar.checks    #    data-quality checks (exit code 1 if one fails)
 .venv/bin/python -m radar.build     # 4. SQL aggregates -> docs/data/*.json + data/history.csv
 ```
 
@@ -170,7 +171,7 @@ can be started by hand from the Actions tab. GitHub doesn't guarantee scheduled
 runs, so a catch-up run at 16:23 UTC does the work only if the morning one
 didn't happen (it checks `data/history.csv` for today's date):
 
-1. `collect` → `arbeitnow` → `enrich` → `history` → `build`. Only new postings need their
+1. `collect` → `arbeitnow` → `enrich` → `history` → `checks` → `build`. Only new postings need their
    text, so a normal day takes a few minutes. If the Arbeitnow step fails, the
    day goes on with the Bundesagentur's data and recently seen career-site
    postings are kept.
@@ -180,9 +181,18 @@ didn't happen (it checks `data/history.csv` for today's date):
    40 log lines and a link to the run (GitHub notifies by e-mail). Further
    failures comment on the same issue; the next successful run closes it.
 
-The run fails on purpose when the data looks wrong: an API path answering
-403/404 (old versions get switched off), fewer than 1,000 postings, fewer than
-half of the previous day's, or more than half of the job texts missing.
+The run fails on purpose when the data looks wrong, before anything is
+committed:
+
+| Where | Fails when |
+|-------|-----------|
+| `collect` | an API path answers 403/404 (old versions get switched off), fewer than 1,000 postings, or fewer than half of the previous day's |
+| `enrich` | more than half of the newly fetched job texts come back empty |
+| `checks` (volume) | today's Bundesagentur postings are more than 50% below or above the median of the previous 7 scans (for Arbeitnow, an optional source, only a warning) |
+| `checks` (fields) | a raw listing has no reference number, or title, employer, place or publication date are missing in more than 2% of listings (an API field was renamed) |
+| `checks` (pay) | an hourly rate of today's postings is outside 12–60 €/h, or its minimum is above its maximum |
+
+`checks` also writes its results as a table into the run's summary page.
 
 [`pages.yml`](.github/workflows/pages.yml) publishes `docs/` to GitHub Pages.
 It runs on pushes that change the site and is called by the daily workflow
@@ -190,7 +200,7 @@ after each data update, because commits pushed with `GITHUB_TOKEN` don't
 trigger Pages builds on their own.
 
 [`tests.yml`](.github/workflows/tests.yml) runs the test suite on every push
-and pull request.
+and pull request (badge at the top).
 
 ## Website (`docs/`)
 
@@ -252,6 +262,7 @@ radar/enrich.py    fetch texts for new postings, extract features -> data/jobs.c
 radar/extract.py   feature extraction rules
 radar/skills.py    skill dictionary (German + English synonyms)
 radar/history.py   online stretches per posting -> data/history/, history.sqlite, timeline.json
+radar/checks.py    data-quality checks of the daily run (volume, API fields, pay range)
 radar/build.py     load jobs.csv into SQLite, run radar/sql/*.sql, write JSON
 radar/og_image.py  link preview image with today's numbers
 radar/patterns.py  skill rules exported for the browser (CV analysis)
