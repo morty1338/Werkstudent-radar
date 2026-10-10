@@ -4,6 +4,13 @@ Daily statistics of Werkstudent postings in Germany: a Python pipeline
 (`radar/`, run by `.github/workflows/daily.yml`) writes JSON into `docs/data/`,
 and a static site in `docs/` (GitHub Pages, deployed by `pages.yml`) shows it.
 
+## Roadmap
+
+Planned phases (history DB, data checks, statistics, skill gap and RSS, NLP
+experiment, extra frontend, packaging) are checklists in `ROADMAP.md`. Read it
+first and tick items off as they land; its "Decisions" section records choices
+that differ from the original plan.
+
 ## Frontend notes
 
 **Files** (`docs/`, served as-is, no build step):
