@@ -230,10 +230,25 @@ and pull request (badge at the top).
 
 A static page in plain HTML, CSS and JavaScript (no framework, no build step),
 so it loads instantly and costs nothing to host. Charts are hand-made HTML/SVG
-with light and dark themes. The only third-party code is pdf.js, loaded from
+in a dark "radar" theme. The only third-party code is pdf.js, loaded from
 cdnjs only when someone uploads a PDF. GitHub Pages lets browsers cache files
 for 10 minutes, so the deploy stamps its commit into the asset URLs
 (`?v=dev` → `?v=<commit>`); otherwise a browser can mix old and new scripts.
+
+- **Skill gap.** In "Check your skills" the page suggests what to learn next:
+  "Learn SQL and Power BI to qualify for 48 more jobs". It is greedy by marginal
+  gain ([`gap.js`](docs/assets/gap.js)): each step adds the skill that makes the
+  most postings fit on top of your skills and the ones picked before, using the
+  same fit rule as the match (you may lack one in four of a posting's skills).
+  Computed in the browser from `checker.json`, so it follows the filters.
+- **RSS feeds** ([`radar/feeds.py`](radar/feeds.py)): `docs/feeds/all.xml` and one
+  feed per field (`it.xml`, `marketing.xml`, …) with postings new on the market in
+  the last 7 days: first seen in that window, not on a source's first collection
+  day, and published at most 7 days before. Items carry title, employer, city,
+  pay, field and the link to the original posting, never the job text. Feed URLs
+  have no version suffix so subscriptions keep working. Linked from the page
+  ("Subscribe to new jobs") and announced with `<link rel="alternate">`.
+
 To preview locally:
 
 ```bash
@@ -289,6 +304,7 @@ radar/history.py   online stretches per posting -> data/history/, history.sqlite
 radar/checks.py    data-quality checks of the daily run (volume, API fields, pay range)
 radar/build.py     load jobs.csv into SQLite, run radar/sql/*.sql, write JSON
 radar/stats.py     bootstrap CIs for medians, Kaplan–Meier with delayed entry
+radar/feeds.py     RSS feeds of new postings -> docs/feeds/
 radar/og_image.py  link preview image with today's numbers
 radar/patterns.py  skill rules exported for the browser (CV analysis)
 radar/sql/         schema and one query per output
@@ -302,5 +318,6 @@ data/eval/         evaluation labels and reports (job texts stay local)
 docs/              the website: index.html, assets/app.js (filters, charts),
                    match.js (skills check and job list), cv.js (CV reading), charts.js
 docs/data/         JSON consumed by the website
+docs/feeds/        RSS feeds (all and per field), rebuilt daily
 data/raw/          local raw dumps, one folder per day (not committed)
 ```

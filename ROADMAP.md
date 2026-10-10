@@ -56,9 +56,9 @@ Rules for every phase:
 
 ## Phase 4 — Product: skill gap + alerts
 
-- [ ] "Check your skills": skill-gap suggestions ("learn X and Y to qualify for N more
+- [x] "Check your skills": skill-gap suggestions ("learn X and Y to qualify for N more
       jobs"), client-side from `checker.json`, greedy by marginal gain.
-- [ ] RSS feeds generated daily: all new postings and one per field (title, company,
+- [x] RSS feeds generated daily: all new postings and one per field (title, company,
       city, link to the original, no job text); small "Subscribe" control in the UI.
 
 ## Phase 5 — NLP experiment
