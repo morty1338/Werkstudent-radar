@@ -1,8 +1,10 @@
-// Small, dependency-free chart helpers: bar lists, a column histogram, a line
-// chart and one shared tooltip. Everything renders plain HTML/SVG.
+// Small, dependency-free chart helpers. Everything renders plain HTML/SVG and
+// stays interactive: rows and marks carry data-* attributes that the page
+// listens to, and every mark has a tooltip (data-tip).
 
 export const fmt = {
   eur: (v) => (v == null ? "—" : `€${v.toFixed(2)}`),
+  eur0: (v) => (v == null ? "—" : `€${Math.round(v)}`),
   pct: (v, digits = 1) => (v == null ? "—" : `${(v * 100).toFixed(digits)}%`),
   int: (v) => (v == null ? "—" : Math.round(v).toLocaleString("en-GB")),
   signedPct: (v) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}%`),
@@ -16,25 +18,20 @@ export function esc(s) {
 }
 
 // --- Tooltip -------------------------------------------------------------------
-// Any element with data-tip="<html>" shows a tooltip on hover or tap.
+// Any element with data-tip="<html>" shows a tooltip on hover (or tap on touch).
 
 let tooltip;
 
 export function initTooltip() {
   tooltip = document.getElementById("tooltip");
-  const show = (target, x, y) => {
-    tooltip.innerHTML = target.dataset.tip;
-    tooltip.hidden = false;
-    place(x, y);
-  };
   document.addEventListener("pointermove", (e) => {
-    const t = e.target.closest("[data-tip]");
-    if (t) show(t, e.clientX, e.clientY);
-    else if (!e.target.closest("svg[data-hover]")) hideTooltip();
+    const t = e.target.closest?.("[data-tip]");
+    if (t) showTooltip(t.dataset.tip, e.clientX, e.clientY);
+    else if (!e.target.closest?.("svg[data-hover]")) hideTooltip();
   });
   document.addEventListener("pointerdown", (e) => {
-    const t = e.target.closest("[data-tip]");
-    if (t && e.pointerType !== "mouse") show(t, e.clientX, e.clientY);
+    const t = e.target.closest?.("[data-tip]");
+    if (t && e.pointerType !== "mouse") showTooltip(t.dataset.tip, e.clientX, e.clientY);
   });
   document.addEventListener("scroll", hideTooltip, { passive: true });
 }
@@ -42,15 +39,7 @@ export function initTooltip() {
 export function showTooltip(html, x, y) {
   tooltip.innerHTML = html;
   tooltip.hidden = false;
-  place(x, y);
-}
-
-export function hideTooltip() {
-  if (tooltip) tooltip.hidden = true;
-}
-
-function place(x, y) {
-  const pad = 12;
+  const pad = 14;
   const { width, height } = tooltip.getBoundingClientRect();
   let left = x + pad;
   let top = y + pad;
@@ -60,45 +49,127 @@ function place(x, y) {
   tooltip.style.top = `${Math.max(8, top)}px`;
 }
 
-// --- Horizontal bars -------------------------------------------------------------
-// rows: [{ label, sub?, value, text, tip?, muted? }]; bars start at zero.
+export function hideTooltip() {
+  if (tooltip) tooltip.hidden = true;
+}
 
-export function barList(el, rows, { max } = {}) {
+// --- Horizontal bars -------------------------------------------------------------
+// rows: [{ key, label, sub?, value, text, tip?, muted?, selected? }]
+// Rows with a key are buttons: the page handles clicks via data-key.
+
+export function barList(el, rows, { max, empty = "No data for this selection.", dim = true } = {}) {
   if (!rows.length) {
-    el.innerHTML = `<p class="empty">No data for this selection.</p>`;
+    el.innerHTML = `<p class="empty">${esc(empty)}</p>`;
     return;
   }
   const top = max ?? (Math.max(...rows.map((r) => r.value ?? 0), 0) || 1);
+  const anySelected = dim && rows.some((r) => r.selected);
   el.innerHTML = `<div class="bars">${rows
     .map((r) => {
-      const w = r.value == null ? 0 : Math.max(0.5, (r.value / top) * 100);
-      return `<div class="bar-row" ${r.tip ? `data-tip="${esc(r.tip)}"` : ""}>
-        <div class="bar-label" title="${esc(r.label)}">${esc(r.label)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ""}</div>
+      const w = r.value == null ? 0 : Math.max(0.6, (r.value / top) * 100);
+      const cls = ["bar-row", r.key != null ? "clickable" : "", r.selected ? "selected" : "", anySelected && !r.selected ? "dimmed" : ""].join(" ");
+      const attrs = r.key != null ? `role="button" tabindex="0" data-key="${esc(r.key)}" aria-pressed="${Boolean(r.selected)}"` : "";
+      return `<div class="${cls}" ${attrs} ${r.tip ? `data-tip="${esc(r.tip)}"` : ""}>
+        <div class="bar-label">${esc(r.label)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ""}</div>
         <div class="bar-cell">
           <div class="bar-track">${r.value == null ? "" : `<div class="bar-fill${r.muted ? " muted" : ""}" style="width:${w}%"></div>`}</div>
-          <span class="bar-value${r.value == null ? " na" : ""}">${esc(r.text)}</span>
+          <span class="bar-value">${esc(r.text)}</span>
         </div>
       </div>`;
     })
     .join("")}</div>`;
 }
 
-// --- Column histogram -------------------------------------------------------------
-// bins: [{ label, value, tip }]
+// --- Histogram with a median marker ----------------------------------------------
+// bins: [{ label, value, tip, inRange }]; median: { pos (0..bins), label }
 
-export function columns(el, bins, { axisTitle } = {}) {
+export function histogram(el, bins, { median, axisTitle } = {}) {
   const max = Math.max(...bins.map((b) => b.value), 1);
+  const marker = median
+    ? `<div class="hist-marker" style="left:${(median.pos / bins.length) * 100}%"><span>${esc(median.label)}</span></div>`
+    : "";
   el.innerHTML = `
-    <div class="cols">${bins
-      .map(
-        (b) => `<div class="col" data-tip="${esc(b.tip)}">
-          <span class="col-value">${b.value || ""}</span>
-          <div class="col-fill" style="height:${(b.value / max) * 85}%"></div>
-        </div>`,
-      )
-      .join("")}</div>
+    <div class="hist">
+      ${marker}
+      <div class="cols">${bins
+        .map(
+          (b) => `<div class="col" data-tip="${esc(b.tip)}">
+            <div class="col-fill${b.inRange ? "" : " soft"}" style="height:${(b.value / max) * 100}%"></div>
+          </div>`,
+        )
+        .join("")}</div>
+    </div>
     <div class="col-axis">${bins.map((b) => `<span>${esc(b.label)}</span>`).join("")}</div>
     ${axisTitle ? `<div class="axis-title">${esc(axisTitle)}</div>` : ""}`;
+}
+
+// --- Dot-range rows: median dot on a p25–p75 bar, on a shared € scale --------------
+// rows: [{ key, label, sub, p25, median, p75, tip, muted, selected }]
+
+export function dotRange(el, rows, { min, max, ticks, empty = "Not enough pay data for this selection." } = {}) {
+  if (!rows.length) {
+    el.innerHTML = `<p class="empty">${esc(empty)}</p>`;
+    return;
+  }
+  const x = (v) => ((Math.min(Math.max(v, min), max) - min) / (max - min)) * 100;
+  const anySelected = rows.some((r) => r.selected);
+  el.innerHTML = `
+    <div class="dots">
+      <div class="dot-row dot-axis" aria-hidden="true">
+        <div></div>
+        <div class="dot-track">${ticks.map((t) => `<span style="left:${x(t)}%">€${t}</span>`).join("")}</div>
+        <div></div>
+      </div>
+      ${rows
+        .map((r) => {
+          const cls = ["dot-row", r.key != null ? "clickable" : "", r.selected ? "selected" : "", anySelected && !r.selected ? "dimmed" : "", r.muted ? "muted" : ""].join(" ");
+          const attrs = r.key != null ? `role="button" tabindex="0" data-key="${esc(r.key)}" aria-pressed="${Boolean(r.selected)}"` : "";
+          return `<div class="${cls}" ${attrs} data-tip="${esc(r.tip)}">
+            <div class="bar-label">${esc(r.label)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ""}</div>
+            <div class="dot-track">
+              ${ticks.map((t) => `<i class="grid" style="left:${x(t)}%"></i>`).join("")}
+              <div class="dot-range" style="left:${x(r.p25)}%;width:${Math.max(0.8, x(r.p75) - x(r.p25))}%"></div>
+              <div class="dot" style="left:${x(r.median)}%"></div>
+            </div>
+            <span class="bar-value">${esc(fmt.eur(r.median))}</span>
+          </div>`;
+        })
+        .join("")}
+    </div>`;
+}
+
+// --- Bubble map of Germany ----------------------------------------------------------
+// The country's outline emerges from the postings themselves: one bubble per place.
+// points: [{ key, name, lat, lon, value, tip, selected, label }]
+
+const GEO = { lonMin: 5.7, lonMax: 15.2, latMin: 47.2, latMax: 55.1 };
+const KX = Math.cos((51.2 * Math.PI) / 180); // squash longitude at Germany's mid-latitude
+
+export function bubbleMap(el, points) {
+  const W = 420;
+  const H = Math.round((W * (GEO.latMax - GEO.latMin)) / ((GEO.lonMax - GEO.lonMin) * KX));
+  const px = (lon) => ((lon - GEO.lonMin) / (GEO.lonMax - GEO.lonMin)) * W;
+  const py = (lat) => ((GEO.latMax - lat) / (GEO.latMax - GEO.latMin)) * H;
+  const max = Math.max(...points.map((p) => p.value), 1);
+  const r = (v) => 2 + Math.sqrt(v / max) * 26;
+  const anySelected = points.some((p) => p.selected);
+  // Big bubbles first so small ones stay on top and hoverable.
+  const sorted = [...points].filter((p) => p.lat != null && p.value > 0).sort((a, b) => b.value - a.value);
+  el.innerHTML = `<svg class="map" viewBox="-30 -10 ${W + 60} ${H + 20}" role="img" aria-label="Map of Werkstudent postings by place">
+    ${sorted
+      .map(
+        (p) => `<circle class="bubble${p.selected ? " selected" : ""}${anySelected && !p.selected ? " dimmed" : ""}"
+          cx="${px(p.lon).toFixed(1)}" cy="${py(p.lat).toFixed(1)}" r="${r(p.value).toFixed(1)}"
+          data-key="${esc(p.key)}" data-tip="${esc(p.tip)}" tabindex="-1"></circle>`,
+      )
+      .join("")}
+    ${sorted
+      .filter((p) => p.label)
+      .map(
+        (p) => `<text class="map-label" x="${(px(p.lon) + r(p.value) + 4).toFixed(1)}" y="${(py(p.lat) + 4).toFixed(1)}">${esc(p.name)}</text>`,
+      )
+      .join("")}
+  </svg>`;
 }
 
 // --- Line chart -----------------------------------------------------------------------
@@ -119,7 +190,7 @@ export function lineChart(el, dates, values, { format = fmt.int, label = "" } = 
 
   const draw = () => {
     const W = Math.max(el.clientWidth, 260);
-    const H = 200;
+    const H = 180;
     const m = { l: 46, r: 64, t: 12, b: 26 };
     const vs = pts.map((p) => p.v);
     let lo = Math.min(...vs);
@@ -137,16 +208,10 @@ export function lineChart(el, dates, values, { format = fmt.int, label = "" } = 
 
     const ticks = [];
     for (let v = lo; v <= hi + step / 2; v += step) ticks.push(v);
-    const grid = ticks
-      .map((v) => `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"></line>`)
-      .join("");
-    const yLabels = ticks
-      .map((v) => `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${esc(format(v))}</text>`)
-      .join("");
+    const grid = ticks.map((v) => `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"></line>`).join("");
+    const yLabels = ticks.map((v) => `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${esc(format(v))}</text>`).join("");
     const xIdx = pts.length <= 2 ? pts.map((_, i) => i) : [0, Math.floor((pts.length - 1) / 2), pts.length - 1];
-    const xLabels = xIdx
-      .map((i) => `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${esc(fmt.shortDate(pts[i].d))}</text>`)
-      .join("");
+    const xLabels = xIdx.map((i) => `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${esc(fmt.shortDate(pts[i].d))}</text>`).join("");
     const path = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join("");
     const area = pts.length > 1 ? `${path}L${x(pts.length - 1)},${y(lo)}L${x(0)},${y(lo)}Z` : "";
     const last = pts[pts.length - 1];
@@ -164,11 +229,11 @@ export function lineChart(el, dates, values, { format = fmt.int, label = "" } = 
     const svg = el.querySelector("svg");
     const cross = svg.querySelector(".crosshair");
     svg.addEventListener("pointermove", (e) => {
-      const r = svg.getBoundingClientRect();
-      const px = ((e.clientX - r.left) / r.width) * W;
+      const rect = svg.getBoundingClientRect();
+      const pxv = ((e.clientX - rect.left) / rect.width) * W;
       let best = 0;
       pts.forEach((_, i) => {
-        if (Math.abs(x(i) - px) < Math.abs(x(best) - px)) best = i;
+        if (Math.abs(x(i) - pxv) < Math.abs(x(best) - pxv)) best = i;
       });
       cross.setAttribute("x1", x(best));
       cross.setAttribute("x2", x(best));

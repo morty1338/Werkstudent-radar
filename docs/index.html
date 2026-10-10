@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Werkstudent Radar</title>
-  <meta name="description" content="The German working-student job market in numbers: real hourly pay, skills in demand, and how many Werkstudent jobs you can get without German. Updated daily.">
+  <meta name="description" content="Werkstudent jobs in Germany in numbers: where they are, what they pay, which skills they ask for, and which ones fit you. Updated daily.">
   <meta property="og:title" content="Werkstudent Radar">
-  <meta property="og:description" content="Real hourly pay, skills in demand and German requirements across all Werkstudent postings in Germany. Updated daily.">
+  <meta property="og:description" content="Where the Werkstudent jobs are, what they pay, which skills they ask for, and which ones fit you. Updated daily.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://morty1338.github.io/werkstudent-radar/">
   <meta property="og:image" content="https://morty1338.github.io/werkstudent-radar/data/og.png">
@@ -22,215 +22,175 @@
   <header class="site-header">
     <div class="wrap header-row">
       <a class="brand" href="#top" aria-label="Werkstudent Radar, back to top">
-        <img src="favicon.svg" alt="" width="22" height="22">
+        <img src="favicon.svg" alt="" width="24" height="24">
         <span>Werkstudent Radar</span>
       </a>
       <nav class="nav" aria-label="Sections">
+        <a href="#where">Jobs</a>
         <a href="#pay">Pay</a>
-        <a href="#german">German</a>
         <a href="#skills">Skills</a>
-        <a href="#check">Check yourself</a>
-        <a href="#programmes">Programmes</a>
-        <a href="#trends">Trends</a>
-        <a href="#method">Method</a>
+        <a href="#match" class="nav-cta">Find your jobs</a>
       </nav>
+    </div>
+    <div class="filterbar" id="filterbar">
+      <div class="wrap filter-row">
+        <label class="sr-only" for="f-field">Field</label>
+        <select id="f-field"><option value="">All fields</option></select>
+        <label class="sr-only" for="f-city">City</label>
+        <select id="f-city"><option value="">All of Germany</option></select>
+        <label class="switch"><input type="checkbox" id="f-nogerman"><span>No German needed</span></label>
+        <span class="filter-count" id="f-count"></span>
+        <button type="button" class="link-btn" id="f-reset" hidden>Reset</button>
+      </div>
     </div>
   </header>
 
   <main id="top">
     <section class="hero wrap">
-      <p class="eyebrow">Germany · Werkstudent jobs only · updated daily</p>
-      <h1>The working-student market in numbers</h1>
-      <p class="lede">What Werkstudent jobs really pay per hour, which skills they ask for, and how many you can get without speaking German. Based on every Werkstudent posting on the job board of the <a href="https://www.arbeitsagentur.de/jobsuche/">Bundesagentur für Arbeit</a>.</p>
-      <p class="stale" id="stale" hidden></p>
-      <div class="tiles" id="tiles" aria-live="polite">
+      <h1>Werkstudent jobs in Germany, in&nbsp;numbers</h1>
+      <p class="lede">Every Werkstudent posting on the Bundesagentur für Arbeit job board, updated each morning.</p>
+      <div class="tiles" id="tiles">
         <div class="tile skeleton"></div><div class="tile skeleton"></div><div class="tile skeleton"></div><div class="tile skeleton"></div>
       </div>
-      <p class="asof" id="asof"></p>
+      <p class="stale" id="stale" hidden></p>
+    </section>
+
+    <section id="where" class="wrap section">
+      <p class="step">01</p>
+      <h2>Where are the jobs?</h2>
+      <p class="insight" id="where-insight"></p>
+      <div class="grid-map">
+        <div class="card">
+          <h3>By place <span class="hint-inline">click a bubble to filter</span></h3>
+          <div id="map"></div>
+        </div>
+        <div class="card">
+          <h3>By field <span class="hint-inline">click to filter</span></h3>
+          <div id="fields" class="chart"></div>
+        </div>
+      </div>
     </section>
 
     <section id="pay" class="wrap section">
-      <h2>Pay</h2>
-      <p class="section-lede" id="pay-lede"></p>
+      <p class="step">02</p>
+      <h2>What does it pay?</h2>
+      <p class="insight" id="pay-insight"></p>
       <div class="grid-2">
-        <figure class="card">
-          <figcaption>
-            <h3>Hourly pay distribution</h3>
-            <p class="hint">Postings that state an hourly rate, each role counted once.</p>
-          </figcaption>
-          <div id="pay-hist" class="chart"></div>
-        </figure>
-        <figure class="card">
-          <figcaption>
-            <h3>Median pay by field</h3>
-            <p class="hint">Bars without a value have too little pay data.</p>
-          </figcaption>
-          <div id="pay-fields" class="chart"></div>
-        </figure>
-      </div>
-      <figure class="card">
-        <figcaption>
-          <h3>Median pay by city</h3>
-          <p class="hint">Cities with at least 15 postings and enough pay data. Grey bars marked <span class="flag-key">†</span>: one employer supplies over a third of the pay data.</p>
-        </figcaption>
-        <div id="pay-cities" class="chart"></div>
-      </figure>
-    </section>
-
-    <section id="german" class="wrap section">
-      <h2>Do you need German?</h2>
-      <p class="section-lede" id="german-lede"></p>
-      <figure class="card">
-        <figcaption><h3>German requirement in postings</h3></figcaption>
-        <div id="german-stack"></div>
-      </figure>
-      <div class="grid-2">
-        <figure class="card">
-          <figcaption>
-            <h3>Open to non-German speakers, by field</h3>
-            <p class="hint">Share of postings where German is not needed or only a plus.</p>
-          </figcaption>
-          <div id="german-fields" class="chart"></div>
-        </figure>
-        <div class="card note">
-          <h3>Why so few?</h3>
-          <p>International companies and start-ups mostly hire through LinkedIn, StepStone or their own career pages, which can't be included here. The Bundesagentur's job board is used mostly by German employers, and most of them write their postings in German.</p>
-          <p>So read this as <em>“on the largest public job board, English-only Werkstudent jobs are rare”</em>, not as a figure for the whole market. The postings that do qualify are listed below.</p>
+        <div class="card">
+          <h3>Hourly pay</h3>
+          <div id="pay-hist"></div>
         </div>
-      </div>
-      <div class="card">
-        <div class="list-head">
-          <h3 id="ef-title">Postings open to non-German speakers</h3>
-          <div class="controls">
-            <label class="sr-only" for="ef-search">Search postings</label>
-            <input id="ef-search" type="search" placeholder="Search title, company, city">
-            <label class="sr-only" for="ef-field">Field</label>
-            <select id="ef-field"><option value="">All fields</option></select>
+        <div class="card">
+          <div class="card-head">
+            <h3>Typical range</h3>
+            <div class="seg" id="pay-seg" role="tablist">
+              <button type="button" data-by="field" aria-selected="true">by field</button>
+              <button type="button" data-by="city" aria-selected="false">by city</button>
+            </div>
           </div>
+          <div id="pay-range"></div>
+          <p class="legend-line"><span class="lg-range"></span> middle half of rates <span class="lg-dot"></span> median</p>
         </div>
-        <div id="ef-list" class="job-list"></div>
-        <button class="more" id="ef-more" type="button" hidden>Show all</button>
       </div>
     </section>
 
     <section id="skills" class="wrap section">
-      <h2>Skills in demand</h2>
-      <p class="section-lede" id="skills-lede"></p>
-      <div class="card">
-        <div class="list-head">
-          <h3>Most requested skills</h3>
-          <div class="controls">
-            <label class="sr-only" for="sk-field">Field</label>
-            <select id="sk-field"><option value="">All fields</option></select>
-            <label class="sr-only" for="sk-city">City</label>
-            <select id="sk-city"><option value="">All cities</option></select>
-          </div>
+      <p class="step">03</p>
+      <h2>Which skills are asked for?</h2>
+      <p class="insight" id="skills-insight"></p>
+      <div class="chips-row" id="skill-groups"></div>
+      <div class="grid-skills">
+        <div class="card">
+          <div id="skill-bars" class="chart"></div>
         </div>
-        <p class="hint" id="sk-hint"></p>
-        <div id="sk-bars" class="chart"></div>
+        <aside class="card skill-detail" id="skill-detail" aria-live="polite"></aside>
       </div>
-      <figure class="card">
-        <figcaption>
-          <h3>Skills that come with higher pay</h3>
-          <p class="hint">Median hourly pay of postings asking for the skill, compared with the overall median. Skills with pay data from at least 10 roles and 5 employers.</p>
-        </figcaption>
-        <div id="sk-pay" class="chart"></div>
-      </figure>
     </section>
 
-    <section id="check" class="wrap section">
-      <h2>Check your skills</h2>
-      <p class="section-lede">Tick what you can do. You'll see how many postings you already qualify for and which skill would open the most new ones. Nothing leaves your browser.</p>
-      <div class="checker">
-        <div class="card checker-input">
-          <div class="controls wrap-controls">
-            <label class="sr-only" for="ck-search">Find a skill</label>
-            <input id="ck-search" type="search" placeholder="Find a skill (e.g. SQL, SAP, Figma)">
-            <label class="sr-only" for="ck-field">Field</label>
-            <select id="ck-field"><option value="">All fields</option></select>
-            <label class="sr-only" for="ck-city">City</label>
-            <select id="ck-city"><option value="">All cities</option></select>
+    <section id="match" class="wrap section">
+      <p class="step">04</p>
+      <h2>Which jobs fit you?</h2>
+      <p class="insight">Upload your CV or pick your skills. You'll see the jobs you already qualify for, with links.</p>
+      <div class="grid-match">
+        <div class="match-side">
+          <div class="card cv-card" id="cv-card">
+            <label class="dropzone" id="cv-drop">
+              <input type="file" id="cv-file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+              <strong>Upload your CV</strong>
+              <span>PDF, DOCX or TXT · analysed on your device, never uploaded</span>
+            </label>
+            <button type="button" class="link-btn" id="cv-paste-toggle">or paste text</button>
+            <div id="cv-paste" hidden>
+              <label class="sr-only" for="cv-text">CV text</label>
+              <textarea id="cv-text" rows="5" placeholder="Paste your CV or a list of your skills"></textarea>
+              <button type="button" class="btn" id="cv-analyse">Analyse</button>
+            </div>
+            <div id="cv-result" aria-live="polite"></div>
           </div>
-          <label class="toggle">
-            <input type="checkbox" id="ck-nogerman">
-            <span>I don't speak German well (only show postings where it isn't required)</span>
-          </label>
-          <div id="ck-chips" class="chip-groups"></div>
-          <div class="checker-actions">
-            <button type="button" class="more" id="ck-all">Show all skills</button>
-            <button type="button" class="link-btn" id="ck-clear">Clear selection</button>
-            <button type="button" class="link-btn" id="ck-share">Copy link to my selection</button>
-          </div>
-          <a class="ck-mini" id="ck-mini" href="#ck-result" hidden></a>
-        </div>
-        <aside class="card checker-result" id="ck-result" aria-live="polite"></aside>
-      </div>
-      <div class="card" id="ck-list" hidden>
-        <div class="list-head">
-          <div class="tabs" id="ck-list-tabs" role="tablist"></div>
-          <div class="controls">
-            <label class="sr-only" for="ck-list-sort">Sort</label>
-            <select id="ck-list-sort">
-              <option value="newest">Newest first</option>
-              <option value="pay">Highest pay first</option>
-            </select>
+          <div class="card">
+            <div class="card-head">
+              <h3>Your skills</h3>
+              <button type="button" class="link-btn" id="my-clear" hidden>Clear</button>
+            </div>
+            <label class="sr-only" for="my-search">Find a skill</label>
+            <input id="my-search" type="search" placeholder="Find a skill: SQL, SAP, Figma…">
+            <div id="my-chips" class="chip-groups"></div>
+            <button type="button" class="link-btn" id="my-all"></button>
           </div>
         </div>
-        <div id="ck-list-body" class="job-list" aria-live="polite"></div>
-        <button class="more" id="ck-list-more" type="button" hidden>Show more</button>
-        <p class="small-print">Links open the original posting on arbeitsagentur.de. Same filters as above; postings that list no specific skills aren't included.</p>
+        <div class="match-main">
+          <div class="card match-summary" id="match-summary" aria-live="polite"></div>
+          <div class="card">
+            <div class="card-head">
+              <div class="tabs" id="job-tabs" role="tablist"></div>
+              <label class="sr-only" for="job-sort">Sort</label>
+              <select id="job-sort">
+                <option value="best">Best fit first</option>
+                <option value="newest">Newest first</option>
+                <option value="pay">Highest pay first</option>
+              </select>
+            </div>
+            <div id="job-filter-chip"></div>
+            <div id="job-list" class="job-list" aria-live="polite"></div>
+            <button class="btn btn-quiet" id="job-more" type="button" hidden>Show more</button>
+          </div>
+        </div>
       </div>
     </section>
 
     <section id="programmes" class="wrap section">
-      <h2>By study programme</h2>
-      <p class="section-lede">Which postings mention your degree, what they pay and what they ask for. A posting can mention several programmes (“Wirtschaftsinformatik, Informatik or similar”).</p>
+      <p class="step">05</p>
+      <h2>What does your degree lead to?</h2>
       <div class="tabs" role="tablist" id="mj-tabs"></div>
       <div class="card" id="mj-panel" role="tabpanel"></div>
     </section>
 
     <section id="trends" class="wrap section">
-      <h2>Trends</h2>
-      <p class="section-lede" id="trends-lede"></p>
+      <p class="step">06</p>
+      <h2>How is it changing?</h2>
+      <p class="insight" id="trends-insight"></p>
       <div class="grid-2">
-        <figure class="card">
-          <figcaption><h3>Werkstudent postings online</h3></figcaption>
-          <div id="tr-jobs" class="chart line-chart"></div>
-        </figure>
-        <figure class="card">
-          <figcaption><h3>Median hourly pay</h3></figcaption>
-          <div id="tr-pay" class="chart line-chart"></div>
-        </figure>
+        <div class="card"><h3>Postings online</h3><div id="tr-jobs" class="line-chart"></div></div>
+        <div class="card"><h3>Median hourly pay</h3><div id="tr-pay" class="line-chart"></div></div>
       </div>
     </section>
 
-    <section id="method" class="wrap section">
-      <h2>Method &amp; source</h2>
-      <div class="grid-2 method">
-        <div>
-          <h3>Data</h3>
-          <p>Every morning a script collects all postings for “Werkstudent”, “Working Student” and “Werkstudierende” in Germany from the public job search of the <a href="https://www.arbeitsagentur.de/jobsuche/">Bundesagentur für Arbeit</a>. Only postings with one of these words in the title are kept.</p>
-          <p>Job texts are analysed but never stored in public or shown here: they belong to the employers. This page only shows aggregated numbers, titles, company names and links to the original postings.</p>
-          <h3>Not included</h3>
-          <p>Postings that exist only on LinkedIn, StepStone, Indeed or company career pages. Large international employers are therefore underrepresented, especially for English-speaking roles.</p>
+    <section class="wrap section about">
+      <details>
+        <summary>About the data</summary>
+        <div class="about-body">
+          <p><strong>Source.</strong> Every morning a script collects all postings with “Werkstudent”, “Working Student” or “Werkstudierende” in the title from the public job search of the <a href="https://www.arbeitsagentur.de/jobsuche/">Bundesagentur für Arbeit</a>. Jobs posted only on LinkedIn, StepStone or company sites aren't included.</p>
+          <p><strong>Pay</strong> comes from the posting's salary fields or phrases like “17,50 € pro Stunde”. Each role counts once, and a median needs at least 10 roles.</p>
+          <p><strong>Skills and German</strong> are found by rules with German and English synonyms, checked against 100 labelled postings. <a href="https://github.com/morty1338/werkstudent-radar#accuracy">How accurate they are</a>.</p>
+          <p><strong>Your CV</strong> is read and analysed in your browser with the same rules. It is never uploaded or stored.</p>
+          <p>Job texts belong to the employers and aren't published here; links lead to the originals. Code and data: <a href="https://github.com/morty1338/werkstudent-radar">github.com/morty1338/werkstudent-radar</a>.</p>
         </div>
-        <div>
-          <h3>How the numbers are made</h3>
-          <ul>
-            <li><strong>Pay</strong> comes from the posting's salary fields or from phrases like “17,50 € brutto pro Stunde”. Each role (company + title) counts once, so an employer posting the same role in 97 cities doesn't dominate. A median needs at least 10 roles from 5 employers.</li>
-            <li><strong>German</strong> is <em>required</em> for phrases like “fließend Deutsch” or “German C1”, <em>a plus</em> for “von Vorteil” or “nice to have”, and <em>not needed</em> for “English only” or English postings that never ask for it. German postings that don't mention it are counted as needing German.</li>
-            <li><strong>Skills</strong> are matched against a dictionary of ~180 skills with German and English synonyms. Broad terms like “Vertrieb” only count next to words like “Kenntnisse” or “experience”.</li>
-          </ul>
-          <p>These are rules, not a human reading every posting. Measured on 100 labelled postings, they told whether German is needed correctly in 70 of 70 random postings, read the pay amount correctly in 18 of 19 and found the 14 most common skills with 99% precision. The job field is the weakest part: about two in three were right before the latest fixes. <a href="https://github.com/morty1338/werkstudent-radar#accuracy">How this was measured</a> · code and data: <a href="https://github.com/morty1338/werkstudent-radar">github.com/morty1338/werkstudent-radar</a>.</p>
-        </div>
-      </div>
+      </details>
     </section>
   </main>
 
   <footer class="site-footer">
-    <div class="wrap">
-      <p>Werkstudent Radar · data: Bundesagentur für Arbeit (Jobbörse) · <a href="https://github.com/morty1338/werkstudent-radar">source code</a></p>
-    </div>
+    <div class="wrap">Werkstudent Radar · data: Bundesagentur für Arbeit · <a href="https://github.com/morty1338/werkstudent-radar">source code</a></div>
   </footer>
 
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
