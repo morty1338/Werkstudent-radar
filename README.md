@@ -8,9 +8,16 @@
 The German working-student job market in numbers: real hourly rates, which
 skills are in demand, and how many jobs you can get without speaking German.
 
-Data source: the public job search of the
-[Bundesagentur für Arbeit](https://www.arbeitsagentur.de/jobsuche/).
-Only Werkstudent postings in Germany are collected.
+Only Werkstudent postings in Germany are collected, from two sources:
+
+- the public job search of the [Bundesagentur für Arbeit](https://www.arbeitsagentur.de/jobsuche/), and
+- companies' own career sites (Personio, Greenhouse, Lever, …) through the free
+  [Arbeitnow](https://www.arbeitnow.com/) job API. This adds many start-ups that
+  never post on the Bundesagentur's board. A posting on both counts once.
+
+LinkedIn, StepStone and Indeed forbid automated collection (terms of use,
+`robots.txt`, EU database rights), so they aren't used; most of their postings
+are copied from the same company career sites.
 
 **Live: [morty1338.github.io/werkstudent-radar](https://morty1338.github.io/werkstudent-radar/)**, updated every morning.
 
@@ -37,6 +44,7 @@ Berlin on the map or "IT & Software" in a chart and the whole page follows.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m radar.collect   # 1. raw search results (~30 s)
+.venv/bin/python -m radar.arbeitnow # 1b. company career sites (a few minutes, paced)
 .venv/bin/python -m radar.enrich    # 2. job texts -> features in data/jobs.csv (~2 min on the first run)
 .venv/bin/python -m radar.build     # 3. SQL aggregates -> docs/data/*.json + data/history.csv
 ```
@@ -75,6 +83,7 @@ One row per Werkstudent posting ever seen.
 | `remote`, `external` | home office possible; posting links to an external site |
 | `published`, `first_seen`, `last_seen` | first publication date; first/last day the collector saw it |
 | `detail_ok`, `xv` | text was available; extractor version used |
+| `source`, `url` | `ba` or `arbeitnow`; link to the original (empty for `ba`, which links via `refnr`) |
 
 ### How features are extracted
 
@@ -129,8 +138,10 @@ can be started by hand from the Actions tab. GitHub doesn't guarantee scheduled
 runs, so a catch-up run at 16:23 UTC does the work only if the morning one
 didn't happen (it checks `data/history.csv` for today's date):
 
-1. `collect` → `enrich` → `build`. Only new postings need their text, so a
-   normal day takes about a minute.
+1. `collect` → `arbeitnow` → `enrich` → `build`. Only new postings need their
+   text, so a normal day takes a few minutes. If the Arbeitnow step fails, the
+   day goes on with the Bundesagentur's data and recently seen career-site
+   postings are kept.
 2. Commits `data/jobs.csv`, `data/history.csv` and `docs/data/` as
    `github-actions[bot]` ("Update data for YYYY-MM-DD").
 3. If any step fails, opens an issue "Daily data update failed" with the last
@@ -204,6 +215,7 @@ Full reports: [baseline](data/eval/report_baseline.md),
 ```
 radar/api.py       small client for the BA job search API (retries, errors)
 radar/collect.py   fetch all Werkstudent postings -> data/raw/<date>/
+radar/arbeitnow.py second source: company career sites via the Arbeitnow API
 radar/enrich.py    fetch texts for new postings, extract features -> data/jobs.csv
 radar/extract.py   feature extraction rules
 radar/skills.py    skill dictionary (German + English synonyms)
