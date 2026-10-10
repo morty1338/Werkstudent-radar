@@ -13,6 +13,7 @@ runs the queries in sql/*.sql and writes:
     docs/data/lifetimes.json how long postings stay online (Kaplan–Meier), overall and by field
     docs/data/cooccurrence.json  skills asked for together, with lift
     docs/feeds/*.xml         RSS feeds of new postings, all and per field (see feeds.py)
+    docs/data/postings.parquet, skills.parquet  every posting's features (no texts) for the SQL playground
     docs/data/og.png         social preview image with today's headline numbers
     docs/data/patterns.json  skill and study-programme rules for analysing a CV in the browser
     data/history.csv         today's snapshot appended (one row per metric and day)
@@ -358,6 +359,41 @@ def build_cooccurrence(db, as_of):
     }
 
 
+def export_parquet(db, out_dir=OUT_DIR):
+    """Every posting ever seen, one row each, for the site's SQL playground (DuckDB in
+    the browser): features, pay and skills, no job texts. Written with DuckDB."""
+    import duckdb
+
+    as_of = db.execute("SELECT MAX(last_seen) FROM jobs").fetchone()[0]
+    skills = defaultdict(list)
+    for r in db.execute("SELECT refnr, skill FROM job_skills ORDER BY refnr, skill"):
+        skills[r["refnr"]].append(r["skill"])
+    rows = [(
+        r["refnr"], r["source"], r["title"], r["company"], r["category"] or "other", r["field_label"] or "Other",
+        r["city"] or None, r["lat"], r["lon"], r["pay"], r["pay_min"], r["pay_max"], r["german"] or None,
+        bool(r["remote"]), r["published"][:10] or None, r["first_seen"], r["last_seen"], r["last_seen"] == as_of,
+        skills.get(r["refnr"], []), r["url"] or JOB_URL.format(refnr=r["refnr"]),
+    ) for r in db.execute("""
+        SELECT j.*, c.label AS field_label FROM jobs j LEFT JOIN categories c ON c.id = j.category
+        ORDER BY j.first_seen, j.refnr""")]
+
+    con = duckdb.connect()
+    con.execute("""CREATE TABLE postings (
+        refnr VARCHAR, source VARCHAR, title VARCHAR, company VARCHAR, field VARCHAR, field_label VARCHAR,
+        city VARCHAR, lat DOUBLE, lon DOUBLE, pay DOUBLE, pay_min DOUBLE, pay_max DOUBLE, german VARCHAR,
+        remote BOOLEAN, published DATE, first_seen DATE, last_seen DATE, online BOOLEAN, skills VARCHAR[], url VARCHAR)""")
+    con.executemany("INSERT INTO postings VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
+    con.execute("CREATE TABLE skills (id VARCHAR, label VARCHAR, \"group\" VARCHAR)")
+    con.executemany("INSERT INTO skills VALUES (?, ?, ?)", [(sid, label, grp) for sid, label, grp, _ in SKILLS])
+    paths = []
+    for table in ("postings", "skills"):
+        path = os.path.join(out_dir, f"{table}.parquet")
+        con.execute(f"COPY {table} TO '{path}' (FORMAT parquet, COMPRESSION zstd)")
+        paths.append(path)
+    con.close()
+    return paths
+
+
 def build_checker(db, summary):
     """Compact per-posting data for the interactive parts of the site.
 
@@ -489,6 +525,9 @@ def main():
                ("cooccurrence.json", build_cooccurrence(db, summary["as_of"]))]
     for name, data in outputs:
         path = write_json(name, data)
+        print(f"wrote {os.path.relpath(path, ROOT)} ({os.path.getsize(path) / 1024:.0f} KB)")
+
+    for path in export_parquet(db):
         print(f"wrote {os.path.relpath(path, ROOT)} ({os.path.getsize(path) / 1024:.0f} KB)")
 
     labels = {r["id"]: r["label"] for r in db.execute("SELECT id, label FROM categories ORDER BY id")}

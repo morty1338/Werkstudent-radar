@@ -315,6 +315,27 @@ a.tile:hover { transform: translateY(-2px); border-color: var(--accent); }
 .card-wide .legend-line { display: block; line-height: 1.5; }
 .card-wide .legend-line strong { color: var(--ink); }
 
+/* SQL playground */
+.sql summary { cursor: pointer; font-weight: 650; list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.sql summary::-webkit-details-marker { display: none; }
+.sql summary::before { content: "▸"; color: var(--accent); font-family: var(--mono); }
+.sql[open] summary::before { content: "▾"; }
+.sql-body { margin-top: 16px; }
+#sql-input {
+  width: 100%; font-family: var(--mono); font-size: 13px; line-height: 1.5; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--surface-3); border-radius: 10px; padding: 12px; resize: vertical; tab-size: 2;
+}
+.sql-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+.sql-status { font-family: var(--mono); font-size: 12px; color: var(--ink-3); margin-left: auto; }
+.sql-out { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+.sql-out table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.sql-out th, .sql-out td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+.sql-out th { position: sticky; top: 0; background: var(--surface); color: var(--ink-2); font-weight: 600; }
+.sql-out td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.sql-error { color: var(--warn-ink); background: var(--warn-bg); padding: 10px 12px; border-radius: 8px; font-family: var(--mono); font-size: 13px; white-space: pre-wrap; }
+.sql-help { font-size: 13px; color: var(--ink-3); margin-top: 12px; }
+.sql-help code { font-family: var(--mono); color: var(--ink-2); }
+
 /* About */
 .about details { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px; }
 .about summary { cursor: pointer; font-weight: 650; }

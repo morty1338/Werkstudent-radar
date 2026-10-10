@@ -193,6 +193,27 @@
       </div>
     </section>
 
+    <section id="query" class="wrap section">
+      <p class="step">07</p>
+      <h2>Query the data yourself</h2>
+      <p class="insight">Every posting since the first scan as one table: field, city, pay, German, skills, first and last seen. SQL runs in your browser with DuckDB. No job texts.</p>
+      <details class="card sql" id="sql">
+        <summary>Open the SQL playground <span class="hint-inline">loads DuckDB-WASM (a few MB) from jsDelivr when opened</span></summary>
+        <div class="sql-body">
+          <div class="chips-row" id="sql-examples"></div>
+          <label class="sr-only" for="sql-input">SQL query</label>
+          <textarea id="sql-input" spellcheck="false" autocapitalize="off" autocomplete="off" rows="11"></textarea>
+          <div class="sql-bar">
+            <button type="button" class="btn" id="sql-run">Run</button>
+            <span class="hint-inline">Ctrl/⌘ + Enter</span>
+            <span class="sql-status" id="sql-status" aria-live="polite"></span>
+          </div>
+          <div class="sql-out" id="sql-out"></div>
+          <p class="sql-help">Tables: <code>postings</code> (refnr, source, title, company, field, field_label, city, lat, lon, pay, pay_min, pay_max, german, remote, published, first_seen, last_seen, online, skills[], url) and <code>skills</code> (id, label, group). Pay is €/h; <code>german</code> is required, implicit, plus or none. Download: <a href="data/postings.parquet" download>postings.parquet</a>, <a href="data/skills.parquet" download>skills.parquet</a>.</p>
+        </div>
+      </details>
+    </section>
+
     <section class="wrap section about">
       <details>
         <summary>About the data</summary>

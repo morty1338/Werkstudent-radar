@@ -1,6 +1,7 @@
 import { barList, bubbleMap, dotRange, esc, fmt, histogram, initTooltip, lineChart, rollDigits, survivalChart } from "./charts.js?v=dev";
 import { initCv } from "./cv.js?v=dev";
 import { initMatch } from "./match.js?v=dev";
+import { initSql } from "./sql.js?v=dev";
 import { medianCI } from "./stats.js?v=dev";
 
 // Column positions in checker.json "jobs" rows.
@@ -618,6 +619,7 @@ async function main() {
 
   ctx.match = initMatch(ctx, (params.get("skills") || "").split(",").filter(Boolean));
   initCv(ctx);
+  initSql();
   renderMajors();
   renderTrends();
   render();

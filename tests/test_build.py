@@ -157,3 +157,25 @@ def test_checker_uses_indices(db):
     skill_ids = [s["id"] for s in checker["skills"]]
     job_a = next(j for j in checker["jobs"] if j[3] == 15.0)
     assert sorted(skill_ids[i] for i in job_a[4]) == ["python", "sql"]
+
+
+def test_parquet_export_and_playground_examples(db, tmp_path):
+    import re
+    from pathlib import Path
+
+    import duckdb
+
+    paths = build.export_parquet(db, tmp_path)
+    con = duckdb.connect()
+    for p in paths:
+        con.execute(f"CREATE VIEW {Path(p).stem} AS SELECT * FROM '{p}'")
+    cols = [r[0] for r in con.execute("DESCRIBE postings").fetchall()]
+    assert "skills" in cols and not {"text", "description"} & set(cols)     # no job texts
+    assert con.execute("SELECT count(*), sum(online::INT) FROM postings").fetchone() == (7, 6)
+    assert con.execute("SELECT skills FROM postings WHERE refnr = 'a'").fetchone()[0] == ["python", "sql"]
+    # Every example query of the site's SQL playground runs on the export.
+    src = (Path(__file__).resolve().parent.parent / "docs" / "assets" / "sql.js").read_text()
+    examples = re.findall(r"sql: `(.*?)`,", src, re.S)
+    assert len(examples) >= 3
+    for sql in examples:
+        con.execute(sql).fetchall()

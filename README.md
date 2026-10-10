@@ -154,6 +154,7 @@ Outputs:
 | `docs/data/history.json` | daily series built from `data/history.csv` (median pay with its 95% CI) |
 | `docs/data/lifetimes.json` | Kaplan–Meier curve of postings still online by days since publication, median days online overall and by field |
 | `docs/data/cooccurrence.json` | per skill, the skills most often asked for together, with lift and share |
+| `docs/data/postings.parquet` | every posting ever seen, one row each (field, city, pay, German, skills as a list, first/last seen, link; no job text), plus `skills.parquet` with labels; written with DuckDB for the SQL playground |
 | `docs/data/og.png` | link preview image with today's numbers (shown by Telegram, WhatsApp, LinkedIn; also at the top of this README) |
 | `data/history.csv` | one row per day × metric (`total`, `category`, `city`, `skill`, `major`, `german`). Which postings were online on a given day can't be reconstructed later, so this is collected from day one. |
 
@@ -230,8 +231,9 @@ and pull request (badge at the top).
 
 A static page in plain HTML, CSS and JavaScript (no framework, no build step),
 so it loads instantly and costs nothing to host. Charts are hand-made HTML/SVG
-in a dark "radar" theme. The only third-party code is pdf.js, loaded from
-cdnjs only when someone uploads a PDF. GitHub Pages lets browsers cache files
+in a dark "radar" theme. The only third-party code is loaded on demand: pdf.js
+from cdnjs when someone uploads a PDF, DuckDB-WASM from jsDelivr when someone
+opens the SQL playground. GitHub Pages lets browsers cache files
 for 10 minutes, so the deploy stamps its commit into the asset URLs
 (`?v=dev` → `?v=<commit>`); otherwise a browser can mix old and new scripts.
 
@@ -248,6 +250,12 @@ for 10 minutes, so the deploy stamps its commit into the asset URLs
   pay, field and the link to the original posting, never the job text. Feed URLs
   have no version suffix so subscriptions keep working. Linked from the page
   ("Subscribe to new jobs") and announced with `<link rel="alternate">`.
+- **SQL playground** (section 07, [`sql.js`](docs/assets/sql.js)): DuckDB compiled to
+  WebAssembly runs SQL in the browser on `postings.parquet`, with four example
+  queries (median pay by field with roles counted once, skills in jobs without
+  German, best-paid skills, well-paid IT jobs by city). DuckDB-WASM is loaded from
+  jsDelivr only when someone opens the playground; a test runs every example
+  query against the export.
 
 To preview locally:
 
