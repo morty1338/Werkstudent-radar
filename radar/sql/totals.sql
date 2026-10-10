@@ -6,6 +6,8 @@ SELECT
     COUNT(pay)                                                           AS postings_with_pay,
     COUNT(role_pay)                                                      AS with_pay,
     percentile(role_pay, 0.5)                                            AS median_pay,
+    median_ci(role_pay, 0)                                               AS median_pay_lo,
+    median_ci(role_pay, 1)                                               AS median_pay_hi,
     percentile(role_pay, 0.25)                                           AS p25_pay,
     percentile(role_pay, 0.75)                                           AS p75_pay,
     SUM(detail_ok)                                                       AS tagged,

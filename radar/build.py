@@ -10,6 +10,8 @@ runs the queries in sql/*.sql and writes:
     docs/data/checker.json   compact per-job skill lists for the in-browser skill checker
     docs/data/postings.json  title, company and city per checker job (loaded on demand)
     docs/data/history.json   daily time series for the trend charts
+    docs/data/lifetimes.json how long postings stay online (Kaplan–Meier), overall and by field
+    docs/data/cooccurrence.json  skills asked for together, with lift
     docs/data/og.png         social preview image with today's headline numbers
     docs/data/patterns.json  skill and study-programme rules for analysing a CV in the browser
     data/history.csv         today's snapshot appended (one row per metric and day)
@@ -23,9 +25,9 @@ import json
 import os
 import sqlite3
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from . import og_image, patterns
+from . import og_image, patterns, stats
 from .extract import CATEGORIES, MAJORS
 from .skills import SKILLS
 
@@ -38,10 +40,15 @@ OUT_DIR = os.path.join(ROOT, "docs", "data")
 MIN_PAY_SAMPLE = 10     # don't report a median pay based on fewer roles than this…
 MIN_PAY_EMPLOYERS = 5   # …or on fewer distinct employers
 MAX_EMPLOYER_SHARE = 0.35  # insights skip groups where one employer supplies more of the sample
+MAX_CI_REL_WIDTH = 0.25   # hide a median whose 95% CI is wider than a quarter of it
 MIN_CITY_JOBS = 15
 MIN_CHECKER_SKILL_JOBS = 5
 TOP_CITIES_HISTORY = 20
-HISTORY_COLUMNS = ["date", "dim", "key", "jobs", "with_pay", "median_pay", "no_german"]
+MIN_AT_RISK = 30        # lifetime curves stop where fewer postings are still observed
+MIN_FIELD_EVENTS = 10   # a field's median lifetime needs at least this many postings gone
+COOC_MIN_PAIR = 5       # skill pairs need this many postings together…
+COOC_TOP = 6            # …and each skill lists this many partners
+HISTORY_COLUMNS = ["date", "dim", "key", "jobs", "with_pay", "median_pay", "no_german", "median_pay_lo", "median_pay_hi"]
 JOB_URL = "https://www.arbeitsagentur.de/jobsuche/jobdetail/{refnr}"
 
 
@@ -68,6 +75,30 @@ class Percentile:
         return round(v[lo] + (v[hi] - v[lo]) * (pos - lo), 2)
 
 
+class MedianCI:
+    """SQL aggregate median_ci(value, bound): bound 0 gives the lower and 1 the upper end
+    of the bootstrap 95% confidence interval of the median; ignores NULLs. Both ends
+    come from one bootstrap run, cached by the group's values."""
+
+    _cache = {}
+
+    def __init__(self):
+        self.values, self.bound = [], 0
+
+    def step(self, value, bound):
+        self.bound = bound
+        if value is not None:
+            self.values.append(float(value))
+
+    def finalize(self):
+        if not self.values:
+            return None
+        key = tuple(sorted(self.values))
+        if key not in MedianCI._cache:
+            MedianCI._cache[key] = stats.bootstrap_median_ci(key)
+        return MedianCI._cache[key][self.bound]
+
+
 def sql(name):
     with open(os.path.join(SQL_DIR, f"{name}.sql"), encoding="utf-8") as f:
         return f.read()
@@ -81,6 +112,7 @@ def load_db(jobs_csv=JOBS_CSV):
     db = sqlite3.connect(":memory:")
     db.row_factory = sqlite3.Row
     db.create_aggregate("percentile", 2, Percentile)
+    db.create_aggregate("median_ci", 2, MedianCI)
     db.executescript(sql("schema"))
 
     db.executemany("INSERT INTO skills VALUES (?, ?, ?)", [(sid, label, grp) for sid, label, grp, _ in SKILLS])
@@ -113,11 +145,17 @@ def query(db, name, **params):
     return [dict(r) for r in db.execute(sql(name), params)]
 
 
+def ci_too_wide(median, lo, hi):
+    return median is None or lo is None or (hi - lo) / median > MAX_CI_REL_WIDTH
+
+
 def hide_small_medians(rows):
-    """Null out medians based on too few roles or employers; keep the sample size visible."""
+    """Null out medians based on too few roles or employers, or whose 95% confidence
+    interval is too wide to say much; keep the sample size visible."""
     for r in rows:
-        if (r.get("with_pay") or 0) < MIN_PAY_SAMPLE or (r.get("pay_employers") or 0) < MIN_PAY_EMPLOYERS:
-            r["median_pay"] = None
+        if ((r.get("with_pay") or 0) < MIN_PAY_SAMPLE or (r.get("pay_employers") or 0) < MIN_PAY_EMPLOYERS
+                or ci_too_wide(r["median_pay"], r.get("median_pay_lo"), r.get("median_pay_hi"))):
+            r["median_pay"] = r["median_pay_lo"] = r["median_pay_hi"] = None
     return rows
 
 
@@ -181,14 +219,17 @@ def build_summary(db):
         "method": {
             "pay": "Hourly pay from the posting's salary fields or its text. Each role (company + title) "
                    "counts once in pay figures, so an employer posting one role in many cities doesn't dominate. "
-                   "Medians need at least 10 roles from 5 employers; headline comparisons skip groups where "
-                   "one employer supplies more than 35% of the sample.",
+                   "Medians need at least 10 roles from 5 employers and a 95% confidence interval no wider "
+                   "than a quarter of the median (percentile bootstrap, 2000 resamples, fixed seed); headline "
+                   "comparisons skip groups where one employer supplies more than 35% of the sample.",
             "no_german": "German is not mentioned in an English posting, is explicitly not required, or is only 'a plus'.",
         },
         "thresholds": {
             "min_pay_sample": MIN_PAY_SAMPLE,
             "min_pay_employers": MIN_PAY_EMPLOYERS,
             "max_employer_share": MAX_EMPLOYER_SHARE,
+            "max_ci_rel_width": MAX_CI_REL_WIDTH,
+            "bootstrap": {"resamples": stats.BOOTSTRAP_RESAMPLES, "seed": stats.BOOTSTRAP_SEED, "level": stats.CI_LEVEL},
         },
         "totals": totals,
         "german": query(db, "german"),
@@ -247,6 +288,73 @@ def insights(totals, categories, cities, skills):
     if berlin:
         out["berlin"] = {k: berlin[k] for k in ("jobs", "median_pay", "with_pay", "no_german", "no_german_share", "it_data_jobs")}
     return out
+
+
+def lifetime_observations(rows, as_of):
+    """(entry, exit, event) in days since publication, for Kaplan–Meier with delayed entry.
+
+    A posting enters observation at its first scan (it may have been online for
+    months before), is last seen at last_seen, and counts as gone ("event") if it
+    wasn't online at the latest scan; it was taken down by the next day.
+    """
+    out = []
+    for r in rows:
+        if not r["published"]:
+            continue
+        pub = date.fromisoformat(r["published"][:10])
+        entry = max(0, (date.fromisoformat(r["first_seen"]) - pub).days)
+        last = (date.fromisoformat(r["last_seen"]) - pub).days
+        gone = r["last_seen"] < as_of
+        out.append((entry, last + 1 if gone else last, gone))
+    return out
+
+
+def build_lifetimes(db, as_of):
+    """How long Bundesagentur postings stay online, from first/last sightings.
+
+    Only the Bundesagentur's postings: their publication date is reliable, and
+    Arbeitnow's are kept a few days after a failed crawl, which blurs when they end.
+    """
+    rows = [dict(r) for r in db.execute(
+        "SELECT category, published, first_seen, last_seen FROM jobs WHERE source = 'ba'")]
+
+    def summary(obs):
+        km = stats.kaplan_meier(obs, min_at_risk=MIN_AT_RISK)
+        return km, {"postings": len(obs), "gone": sum(1 for o in obs if o[2]),
+                    "median_days": km["median"], "observed_until": km["until"]}
+
+    km, overall = summary(lifetime_observations(rows, as_of))
+    by_field = {}
+    for cat in sorted({r["category"] for r in rows}):
+        obs = lifetime_observations([r for r in rows if r["category"] == cat], as_of)
+        _, s = summary(obs)
+        if s["gone"] < MIN_FIELD_EVENTS:
+            s["median_days"] = None
+        by_field[cat] = s
+    return {
+        "as_of": as_of,
+        "source": "ba",
+        "method": "Kaplan–Meier with delayed entry: age in days since publication; a posting is observed from its "
+                  "first scan, counts as gone when missing from the latest scan, and as still online (censored) "
+                  f"otherwise. Curves stop where fewer than {MIN_AT_RISK} postings are observed; 95% bands from "
+                  "Greenwood's formula (log scale).",
+        "min_at_risk": MIN_AT_RISK,
+        **overall,
+        "curve": {"fields": ["days", "share_online", "lo", "hi", "at_risk"], "rows": km["curve"]},
+        "by_field": by_field,
+    }
+
+
+def build_cooccurrence(db, as_of):
+    related = defaultdict(list)
+    for r in query(db, "cooccurrence", min_pair=COOC_MIN_PAIR, top=COOC_TOP):
+        related[r["skill"]].append([r["other"], r["lift"], r["share"], r["together"]])
+    return {
+        "as_of": as_of,
+        "fields": ["skill", "lift", "share", "together"],
+        "min_pair": COOC_MIN_PAIR,
+        "skills": dict(related),
+    }
 
 
 def build_checker(db, summary):
@@ -313,6 +421,7 @@ def build_checker(db, summary):
         "german": german_codes,
         "min_pay_sample": MIN_PAY_SAMPLE,
         "max_employer_share": MAX_EMPLOYER_SHARE,
+        "max_ci_rel_width": MAX_CI_REL_WIDTH,
         "jobs": jobs,
     }
     postings = {
@@ -351,6 +460,8 @@ def build_history(rows):
         series[f"{name}:jobs"][i] = int(r["jobs"])
         if r["dim"] == "total":
             series[f"{name}:median_pay"][i] = _num(r["median_pay"])
+            series[f"{name}:median_pay_lo"][i] = _num(r.get("median_pay_lo"))
+            series[f"{name}:median_pay_hi"][i] = _num(r.get("median_pay_hi"))
             series[f"{name}:with_pay"][i] = int(r["with_pay"])
             series[f"{name}:no_german"][i] = int(r["no_german"] or 0)
     return {"dates": dates, "series": dict(sorted(series.items()))}
@@ -372,7 +483,9 @@ def main():
 
     rules = patterns.export([s["id"] for s in checker["skills"]])
     outputs = [("summary.json", summary), ("checker.json", checker), ("postings.json", postings),
-               ("history.json", history), ("patterns.json", rules)]
+               ("history.json", history), ("patterns.json", rules),
+               ("lifetimes.json", build_lifetimes(db, summary["as_of"])),
+               ("cooccurrence.json", build_cooccurrence(db, summary["as_of"]))]
     for name, data in outputs:
         path = write_json(name, data)
         print(f"wrote {os.path.relpath(path, ROOT)} ({os.path.getsize(path) / 1024:.0f} KB)")

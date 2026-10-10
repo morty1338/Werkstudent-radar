@@ -15,6 +15,8 @@ SELECT m.id,
        ROUND(1.0 * COUNT(*) / (SELECT COUNT(*) FROM active_tagged), 4) AS share,
        COUNT(a.role_pay)                                               AS with_pay,
        percentile(a.role_pay, 0.5)                                     AS median_pay,
+       median_ci(a.role_pay, 0)                                        AS median_pay_lo,
+       median_ci(a.role_pay, 1)                                        AS median_pay_hi,
        conc.pay_employers,
        conc.top_employer_share,
        ROUND(AVG(a.no_german), 4)                                      AS no_german_share

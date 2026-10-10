@@ -82,13 +82,46 @@ def test_employer_concentration(db):
     assert cats["it"]["top_employer_share"] == round(1 / 3, 3)
 
 
-def test_small_samples_hide_median():
+def test_small_samples_and_wide_intervals_hide_median():
+    ci = {"median_pay_lo": 15.5, "median_pay_hi": 16.5}
     rows = build.hide_small_medians([
-        {"median_pay": 16.0, "with_pay": 9, "pay_employers": 9},
-        {"median_pay": 16.0, "with_pay": 30, "pay_employers": 2},
-        {"median_pay": 16.0, "with_pay": 30, "pay_employers": 10},
+        {"median_pay": 16.0, "with_pay": 9, "pay_employers": 9, **ci},
+        {"median_pay": 16.0, "with_pay": 30, "pay_employers": 2, **ci},
+        {"median_pay": 16.0, "with_pay": 30, "pay_employers": 10, **ci},
+        # 95% CI €13.50–€18.50 is wider than a quarter of €16: too uncertain to show
+        {"median_pay": 16.0, "with_pay": 30, "pay_employers": 10, "median_pay_lo": 13.5, "median_pay_hi": 18.5},
     ])
-    assert [r["median_pay"] for r in rows] == [None, None, 16.0]
+    assert [r["median_pay"] for r in rows] == [None, None, 16.0, None]
+    assert rows[3]["median_pay_lo"] is None and rows[2]["median_pay_lo"] == 15.5
+
+
+def test_medians_come_with_a_bootstrap_interval(db):
+    t = build.query(db, "totals")[0]
+    assert t["median_pay_lo"] <= t["median_pay"] <= t["median_pay_hi"]
+    agg = build.MedianCI()
+    for v in [15, 16, 16, 17, 18, None]:
+        agg.step(v, 1)
+    assert agg.finalize() >= 16.0
+
+
+def test_cooccurrence_lift_and_share(db):
+    rows = {(r["skill"], r["other"]): r for r in build.query(db, "cooccurrence", min_pair=1, top=5)}
+    # 6 tagged postings; sql in 2, python in 1, both in 1: lift = 1·6 / (2·1) = 3
+    assert rows[("python", "sql")]["lift"] == 3.0
+    assert rows[("sql", "python")]["share"] == 0.5
+    assert ("sql", "excel") not in rows              # never together
+
+
+def test_lifetimes_count_gone_postings_from_publication(db):
+    obs = build.lifetime_observations([
+        {"published": "2026-10-01", "first_seen": "2026-10-05", "last_seen": "2026-10-07"},   # gone
+        {"published": "2026-10-08", "first_seen": "2026-10-08", "last_seen": "2026-10-09"},   # still online
+        {"published": "", "first_seen": "2026-10-08", "last_seen": "2026-10-09"},             # no date: skipped
+    ], as_of="2026-10-09")
+    assert obs == [(4, 7, True), (0, 1, False)]
+    out = build.build_lifetimes(db, "2026-10-09")
+    assert out["postings"] == 7 and out["gone"] == 1
+    assert out["curve"]["rows"][0][:2] == [0, 1.0] or out["curve"]["rows"][0][:2] == (0, 1.0)
 
 
 def test_history_replaces_same_day(db, tmp_path):
