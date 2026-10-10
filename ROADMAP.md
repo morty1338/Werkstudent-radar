@@ -63,11 +63,14 @@ Rules for every phase:
 
 ## Phase 5 — NLP experiment
 
-- [ ] `experiments/`: skill extraction with multilingual sentence embeddings or a small
+- [x] `experiments/`: skill extraction with multilingual sentence embeddings or a small
       zero-shot model vs. the current rules on the 100 labelled postings (labels are
       AI-made, see `data/eval/LABELS.md`); precision/recall/F1 per skill and overall.
-- [ ] Recommendation: replace/combine with the rules only if clearly better. The daily
-      pipeline is not touched in this phase.
+- [x] Recommendation: replace/combine with the rules only if clearly better. The daily
+      pipeline is not touched in this phase. Result: rules micro F1 95% vs. embeddings 75%
+      (rules or embeddings 91%), so the rules stay; see `experiments/README.md`.
+      Experiment dependencies live in `experiments/requirements.txt`, not the project's,
+      so the daily run and CI don't install them.
 
 ## Phase 6 — Extra frontend
 

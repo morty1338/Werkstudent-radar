@@ -11,6 +11,13 @@ experiment, extra frontend, packaging) are checklists in `ROADMAP.md`. Read it
 first and tick items off as they land; its "Decisions" section records choices
 that differ from the original plan.
 
+## Experiments
+
+`experiments/` holds side studies outside the daily pipeline, with their own
+`requirements.txt` and git-ignored `.venv/` and `.cache/`. They read the local
+job texts in `data/eval/sample.json` and must only write scores and reference
+numbers, never job text.
+
 ## Frontend notes
 
 **Files** (`docs/`, served as-is, no build step):
