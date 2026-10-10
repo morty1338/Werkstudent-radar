@@ -14,12 +14,22 @@ Only Werkstudent postings in Germany are collected.
 
 **Live: [morty1338.github.io/werkstudent-radar](https://morty1338.github.io/werkstudent-radar/)**, updated every morning.
 
-- **Pay**: median hourly rate by field and city, from the rates stated in postings
-- **German**: how many postings are open to non-German speakers, with the full list
-- **Skills**: what's asked for, by field and city, and which skills come with higher pay
-- **Check your skills**: tick what you can do, see the share of postings you match, which skill opens the most new ones, and the matching postings themselves (plus those one skill away)
-- **Study programmes**: Wirtschaftsinformatik, Informatik, BWL, Wirtschaftsingenieurwesen and more
-- **Trends**: daily snapshots from 9 Oct 2026 on
+The page answers one question per section, and every chart is a filter: click
+Berlin on the map or "IT & Software" in a chart and the whole page follows.
+
+1. **Where are the jobs?** A map of ~900 places (Germany's outline appears from
+   the postings alone) and the job fields.
+2. **What does it pay?** The hourly pay distribution and the typical range per
+   field or city.
+3. **Which skills are asked for?** The most requested skills by group; click one
+   for its pay, where it's used, and its jobs.
+4. **Which jobs fit you?** Upload your CV (PDF, DOCX or TXT) or pick skills: the
+   share of jobs you qualify for, what to learn next, and the matching postings
+   with links, best fit first. The CV is analysed in the browser with the same
+   skill dictionary as the postings and is never uploaded.
+5. **What does your degree lead to?** Wirtschaftsinformatik, Informatik, BWL,
+   Wirtschaftsingenieurwesen and more.
+6. **How is it changing?** Daily snapshots from 9 Oct 2026 on.
 
 ## Quick start
 
@@ -53,7 +63,7 @@ One row per Werkstudent posting ever seen.
 | Column | Meaning |
 |--------|---------|
 | `refnr`, `title`, `company`, `hauptberuf` | posting metadata from the API |
-| `city`, `region` | first location, city name normalised |
+| `city`, `region`, `lat`, `lon` | first location: city name normalised, coordinates for the map |
 | `category` | job field from title / occupation (`it`, `data`, `marketing`, `finance`, `engineering`, `retail`, …) |
 | `lang` | language the posting is written in (`de` / `en`) |
 | `german` | `required` (e.g. "fließend Deutsch", "German C1"), `plus` ("von Vorteil", "nice to have"), `none` ("English only", or an English posting that never asks for German), `implicit` (German posting that doesn't mention it) |
@@ -105,8 +115,9 @@ Outputs:
 | File | Content |
 |------|---------|
 | `docs/data/summary.json` | totals, German requirements, pay histogram, fields, cities, skills, study programmes (with example postings), all postings open to non-German speakers, headline insights |
-| `docs/data/checker.json` | per posting: field, city, German level, pay and skill indices, for the in-browser skill checker |
-| `docs/data/postings.json` | title, company, city and date for the same postings in the same order; loaded only when someone opens the list of matching postings |
+| `docs/data/checker.json` | per posting: field, city, German level, pay, skills, role and employer ids. The site filters and aggregates these in the browser, so every chart reacts to the filters |
+| `docs/data/postings.json` | title, company, city and date for the same postings in the same order; loaded when the job list comes into view |
+| `docs/data/patterns.json` | the skill and study-programme rules converted for JavaScript, for analysing a CV in the browser (a test checks that Python and JavaScript find the same skills) |
 | `docs/data/history.json` | daily series built from `data/history.csv` |
 | `docs/data/og.png` | link preview image with today's numbers (shown by Telegram, WhatsApp, LinkedIn; also at the top of this README) |
 | `data/history.csv` | one row per day × metric (`total`, `category`, `city`, `skill`, `major`, `german`). Which postings were online on a given day can't be reconstructed later, so this is collected from day one. |
@@ -138,11 +149,10 @@ and pull request.
 
 ## Website (`docs/`)
 
-A static page in plain HTML, CSS and JavaScript (no framework, no build step,
-no third-party scripts), so it loads instantly and costs nothing to host. It
-reads the three JSON files in `docs/data/`; the skill checker runs entirely in
-the browser on `checker.json`. Charts are hand-made HTML/SVG with light and
-dark themes. To preview locally:
+A static page in plain HTML, CSS and JavaScript (no framework, no build step),
+so it loads instantly and costs nothing to host. Charts are hand-made HTML/SVG
+with light and dark themes. The only third-party code is pdf.js, loaded from
+cdnjs only when someone uploads a PDF. To preview locally:
 
 ```bash
 python3 -m http.server --directory docs
@@ -194,6 +204,7 @@ radar/extract.py   feature extraction rules
 radar/skills.py    skill dictionary (German + English synonyms)
 radar/build.py     load jobs.csv into SQLite, run radar/sql/*.sql, write JSON
 radar/og_image.py  link preview image with today's numbers
+radar/patterns.py  skill rules exported for the browser (CV analysis)
 radar/sql/         schema and one query per output
 radar/evaluate.py  accuracy check against labelled postings
 eval/label.html    blind labelling form
@@ -201,7 +212,8 @@ tests/             rule tests on made-up snippets, SQL tests on a tiny fixture
 data/jobs.csv      extracted features (committed)
 data/history.csv   daily metric snapshots (committed)
 data/eval/         evaluation labels and reports (job texts stay local)
-docs/              the website (index.html, assets/)
+docs/              the website: index.html, assets/app.js (filters, charts),
+                   match.js (skills and job list), cv.js (CV reading), charts.js
 docs/data/         JSON consumed by the website
 data/raw/          local raw dumps, one folder per day (not committed)
 ```
