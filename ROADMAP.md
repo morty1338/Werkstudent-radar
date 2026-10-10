@@ -82,7 +82,7 @@ Rules for every phase:
 
 ## Phase 7 — Packaging
 
-- [ ] README: Mermaid architecture diagram (BA API → pipeline → SQLite → build →
+- [x] README: Mermaid architecture diagram (BA API → pipeline → SQLite → build →
       docs/ → Pages), screenshots, live link, key numbers (postings per day, days of
       history, skill-detection precision/recall) and a "Methods" section (bootstrap,
       Kaplan–Meier, lift).

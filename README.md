@@ -25,19 +25,76 @@ are copied from the same company career sites.
 The page answers one question per section, and every chart is a filter: click
 Berlin on the map or "IT & Software" in a chart and the whole page follows.
 
-1. **Where are the jobs?** A map of ~900 places (Germany's outline appears from
-   the postings alone) and the job fields.
+1. **Where are the jobs?** A map of ~940 places on Germany's outline, with a slow
+   radar sweep, and the job fields.
 2. **What does it pay?** The hourly pay distribution and the typical range per
-   field or city.
+   field or city; every median with its 95% confidence interval.
 3. **Which skills are asked for?** The most requested skills by group; click one
    for its pay, where it's used, and its jobs.
 4. **What does your degree lead to?** Wirtschaftsinformatik, Informatik, BWL,
    Wirtschaftsingenieurwesen and more.
-5. **How is it changing?** Daily snapshots from 9 Oct 2026 on.
+5. **How is it changing?** Daily snapshots from 9 Oct 2026 on, and how long
+   postings stay online (Kaplan–Meier).
 6. **Check your skills.** Tick skills, or upload a CV (PDF, DOCX or TXT) and its
    skills are ticked for you, to see the share of jobs you qualify for, what to
    learn next and the matching postings. The CV is analysed in the browser with
    the same skill dictionary as the postings and is never uploaded.
+7. **Query the data yourself.** A SQL playground (DuckDB in the browser) over
+   every posting since the first scan.
+
+In German or English (switch in the header), on phones with a bottom tab bar,
+and installable as a home-screen app. RSS feeds announce new postings per field.
+
+## Screenshots
+
+| Overview and map | Pay with confidence intervals |
+|---|---|
+| ![Overview: live status, key numbers, map of Germany with postings per place, jobs by field](media/overview.png) | ![Pay: histogram with median, typical range per field](media/pay.png) |
+| **How long postings stay online** | **Check your skills and what to learn next** |
+| ![Trends: postings online, median pay with 95% band, Kaplan–Meier curve](media/trends.png) | ![Skills check: share of jobs that fit, greedy learning plan](media/skills-check.png) |
+
+<p align="center"><img src="media/mobile-de.png" width="300" alt="Phone view in German with bottom tab bar"></p>
+
+## Key numbers
+
+As of 10 Oct 2026 (the live site updates every morning):
+
+| | |
+|---|---|
+| Postings online | **4,891** (Bundesagentur 4,201, company career sites 690) from 2,590 employers in 941 places |
+| Postings tracked since the start | 4,917 |
+| Days of history | 2 (daily since 9 Oct 2026), with online stretches per posting |
+| Median hourly pay | **€16.00** (95% CI €16.00–16.00; 653 roles with a stated rate) |
+| Skill detection, 14 common skills | precision **99%**, recall **97%** on the random 70 labelled postings (before rule fixes: 99% / 96%); sentence embeddings on the same postings: 87% / 75% ([experiment](experiments/README.md)) |
+| German requirement | right level in 69 of 70 random postings; "open without German" correct 15/15 |
+| Tests | 215 (pytest, incl. Node checks for the browser code) |
+| Lighthouse (desktop) | 100 / 100 / 100 / 100 |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  BA["BA Jobsuche API"] --> C
+  AN["Arbeitnow API<br/>company career sites"] --> C
+  subgraph daily["GitHub Actions · daily.yml · every morning"]
+    C["collect + arbeitnow"] --> R[("data/raw<br/>local only")]
+    R --> E["enrich<br/>rules: skills, German, pay"]
+    E --> J[("data/jobs.csv")]
+    J --> H["history"]
+    H --> HC[("data/history/*.csv")]
+    HC --> SQ[("history.sqlite")]
+    H --> Q{"checks"}
+    Q -- "fail" --> I["issue + e-mail"]
+    Q -- "pass" --> B["build<br/>SQLite in memory + radar/sql"]
+  end
+  B --> D["docs/<br/>JSON · Parquet · RSS"]
+  D --> P["GitHub Pages"]
+  P --> U["Browser: charts, CIs, skill gap,<br/>CV analysis, DuckDB-WASM"]
+```
+
+Everything runs on free tiers: GitHub Actions for the pipeline, GitHub Pages for
+the site. No server, no database server, no secrets. Job texts stay on the
+machine that fetched them; only extracted features and aggregates are published.
 
 ## Quick start
 
@@ -122,27 +179,12 @@ Three choices keep the numbers honest:
   employers. Each group also reports `pay_employers` and `top_employer_share`;
   headline comparisons ("best-paid city") skip groups where one employer supplies
   more than 35% of the sample.
-- **Medians come with their uncertainty.** Every median pay has a 95% confidence
-  interval from a percentile bootstrap (2,000 resamples with replacement, fixed
-  seed, so the same data gives the same interval). A median whose interval is
-  wider than a quarter of its value (e.g. €13.50–18.50 around €16) is hidden like
-  one with too few roles. The site computes the same intervals in the browser for
-  whatever the filters select ([`stats.js`](docs/assets/stats.js); a test checks it
-  against Python).
+- **Medians come with their uncertainty.** Every median pay has a 95% bootstrap
+  confidence interval, and a median whose interval is too wide is hidden (see
+  [Methods](#methods)).
 
-Two more analyses:
-
-- **How long postings stay online** (`lifetimes.json`): a Kaplan–Meier curve of
-  the share of Bundesagentur postings still online by days since publication.
-  Postings are only observed from their first scan, so the estimate uses
-  delayed entry (a posting published 40 days before the first scan only counts
-  from day 40); postings still online are censored. The curve stops where fewer
-  than 30 postings are observed, and has a 95% band from Greenwood's formula.
-  It sharpens with every day of history.
-- **Skills asked for together** (`cooccurrence.json`, SQL self-join in
-  [`cooccurrence.sql`](radar/sql/cooccurrence.sql)): for each skill, the skills
-  with the highest lift, P(A and B) / (P(A)·P(B)), among pairs in at least 5
-  postings. Lift 3 means three times as often together as if they were unrelated.
+The posting lifetimes (Kaplan–Meier) and skill co-occurrence (lift) are
+described under [Methods](#methods) too.
 
 Outputs:
 
@@ -278,6 +320,62 @@ To preview locally:
 python3 -m http.server --directory docs
 ```
 
+## Methods
+
+**Each role counts once in pay figures.** Pay statistics use one posting per
+company + title (per company + title + city for city figures), so an employer
+posting one role in 97 cities counts once. A median needs at least 10 roles
+from 5 employers.
+
+**Bootstrap confidence intervals** ([`radar/stats.py`](radar/stats.py),
+[`docs/assets/stats.js`](docs/assets/stats.js)). For a group's *n* hourly rates,
+draw *n* rates with replacement, take the median, repeat 2,000 times (fixed
+seed 42), and report the 2.5th and 97.5th percentiles of those medians as the
+95% interval (percentile bootstrap). In SQL it is an aggregate,
+`median_ci(pay, 0|1)`, next to `percentile(pay, 0.5)`. A median whose interval
+is wider than a quarter of the median is hidden: `(hi − lo) / median > 0.25`.
+The browser computes the same interval for any filter selection; a resample is
+drawn as counts per position of the sorted rates, so its median is found by a
+running sum, without sorting (2,000 resamples of 650 rates: about 17 ms on a laptop;
+results are cached per selection). Many
+rates are exactly €16.00, which is why the overall interval can be €16.00–16.00.
+
+**Kaplan–Meier with delayed entry** ([`radar/stats.py`](radar/stats.py),
+`build_lifetimes` in [`build.py`](radar/build.py)). Time is days since
+publication. A posting enters observation at its first scan
+(`entry = first_seen − published`; one published 40 days before the first scan
+can't have been seen leaving earlier), ends at `last_seen − published + 1` if it
+was missing from the latest scan (event), and is censored at
+`last_seen − published` if it is still online. At each event time *tᵢ*:
+
+- at risk: *nᵢ* = #{postings with entry < *tᵢ* ≤ exit}
+- survival: *S(t)* = ∏ over *tᵢ ≤ t* of (1 − *dᵢ* / *nᵢ*), with *dᵢ* postings gone at *tᵢ*
+- 95% band: *S(t)* · exp(± 1.96 · √Σ *dᵢ* / (*nᵢ*(*nᵢ* − *dᵢ*))) (Greenwood, log scale)
+
+The curve stops before the first event time with fewer than 30 postings at
+risk; the median is the first *t* with *S(t)* ≤ 0.5. Only Bundesagentur
+postings: Arbeitnow postings are kept for a few days after a failed crawl,
+which blurs when they end. With two days of history the curve rests on 26
+postings gone; it fills in daily.
+
+**Lift for skills asked together** ([`cooccurrence.sql`](radar/sql/cooccurrence.sql),
+a self-join of `job_skills`). Over *N* postings with a text, for skills *A* and
+*B* asked in *n_A*, *n_B* and together in *n_AB* postings:
+lift = *P(A ∧ B)* / (*P(A)* · *P(B)*) = *n_AB* · *N* / (*n_A* · *n_B*). Lift 1 means
+unrelated, 3 means three times as often together as by chance. Pairs need
+*n_AB* ≥ 5; each skill keeps its 6 highest. The share *P(B | A)* = *n_AB* / *n_A*
+is shown next to it.
+
+**Skill gap, greedy** ([`gap.js`](docs/assets/gap.js)). A posting fits when you
+lack at most ⌊k/4⌋ of its *k* skills. Only postings exactly one skill short can
+be completed by one more skill, so the gain of skill *s* is the number of those
+postings missing *s*. Each step picks the skill with the largest gain, adds it,
+and recomputes. Greedy is exact for one step and a good approximation beyond.
+
+**Rules vs. embeddings.** Skill extraction by sentence embeddings was tested
+against the rules on the labelled postings with cross-validated thresholds:
+micro F1 75% vs. 95%, so the rules stay ([details](experiments/README.md)).
+
 ## Accuracy
 
 The extraction rules are heuristics, so they are measured against 100 labelled
@@ -310,7 +408,7 @@ Full reports: [baseline](data/eval/report_baseline.md),
 
 ```bash
 .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/python -m pytest                   # 109 rule and SQL tests
+.venv/bin/python -m pytest                   # 215 tests (rules, SQL, history, stats, feeds, browser code via Node)
 .venv/bin/python -m radar.evaluate report    # needs the local sample texts
 ```
 
@@ -333,13 +431,18 @@ radar/patterns.py  skill rules exported for the browser (CV analysis)
 radar/sql/         schema and one query per output
 radar/evaluate.py  accuracy check against labelled postings
 eval/label.html    blind labelling form
-tests/             rule tests on made-up snippets, SQL tests on a tiny fixture
+tests/             rule tests on made-up snippets, SQL tests on a tiny fixture, Node tests for browser code
+experiments/       side studies with their own dependencies (sentence embeddings vs. rules)
+media/             README screenshots
+lighthouserc.json  Lighthouse CI thresholds
 data/jobs.csv      extracted features (committed)
 data/history.csv   daily metric snapshots (committed)
 data/history/      scans and online stretches per posting (committed; source of history.sqlite)
 data/eval/         evaluation labels and reports (job texts stay local)
-docs/              the website: index.html, assets/app.js (filters, charts),
-                   match.js (skills check and job list), cv.js (CV reading), charts.js
+docs/              the website: index.html, assets/app.js (filters, sections), charts.js
+                   (charts, map, tooltip), match.js (skills check, job list), gap.js
+                   (learning plan), cv.js (CV reading), stats.js (bootstrap CI),
+                   sql.js (SQL playground), i18n.js (German/English strings)
 docs/data/         JSON consumed by the website
 docs/feeds/        RSS feeds (all and per field), rebuilt daily
 data/raw/          local raw dumps, one folder per day (not committed)
