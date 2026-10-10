@@ -31,7 +31,7 @@ RAW_DIR = os.path.join(ROOT, "data", "raw")
 JOBS_CSV = os.path.join(ROOT, "data", "jobs.csv")
 
 FIELDS = [
-    "refnr", "title", "company", "city", "region", "category", "hauptberuf",
+    "refnr", "title", "company", "city", "region", "lat", "lon", "category", "hauptberuf",
     "lang", "german", "english", "pay_min", "pay_max", "pay_src", "hours",
     "skills", "majors", "remote", "external", "published",
     "first_seen", "last_seen", "detail_ok", "xv",
@@ -157,8 +157,11 @@ def main():
             if row and row.get("detail_ok") == "1" and not features["detail_ok"]:
                 features = {}  # text unavailable today: keep yesterday's tags instead of blanking them
             row = {**(row or {}), **features}
+        loc = (listing.get("stellenlokationen") or [{}])[0]
         row.update({
             "refnr": ref,
+            "lat": round(loc["breite"], 4) if loc.get("breite") is not None else "",
+            "lon": round(loc["laenge"], 4) if loc.get("laenge") is not None else "",
             "title": (listing.get("stellenangebotsTitel") or "").strip(),
             "company": (listing.get("firma") or "").strip(),
             "hauptberuf": listing.get("hauptberuf") or "",

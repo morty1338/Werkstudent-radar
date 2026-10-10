@@ -7,6 +7,8 @@ CREATE TABLE jobs (
     company     TEXT,
     city        TEXT,
     region      TEXT,
+    lat         REAL,
+    lon         REAL,
     category    TEXT,
     lang        TEXT,
     german      TEXT,             -- required | plus | none | implicit | '' (no text)

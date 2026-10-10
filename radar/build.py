@@ -11,6 +11,7 @@ runs the queries in sql/*.sql and writes:
     docs/data/postings.json  title, company and city per checker job (loaded on demand)
     docs/data/history.json   daily time series for the trend charts
     docs/data/og.png         social preview image with today's headline numbers
+    docs/data/patterns.json  skill and study-programme rules for analysing a CV in the browser
     data/history.csv         today's snapshot appended (one row per metric and day)
 
 The snapshot matters: which postings were online on a given day, and what they
@@ -24,7 +25,7 @@ import sqlite3
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from . import og_image
+from . import og_image, patterns
 from .extract import CATEGORIES, MAJORS
 from .skills import SKILLS
 
@@ -92,7 +93,8 @@ def load_db(jobs_csv=JOBS_CSV):
     for r in rows:
         lo, hi = _num(r["pay_min"]), _num(r["pay_max"])
         jobs.append((
-            r["refnr"], r["title"], r["company"], r["city"], r["region"], r["category"],
+            r["refnr"], r["title"], r["company"], r["city"], r["region"],
+            _num(r.get("lat")), _num(r.get("lon")), r["category"],
             r["lang"], r["german"], _num(r["english"], int), lo, hi,
             round((lo + hi) / 2, 2) if lo is not None else None,
             r["pay_src"], _num(r["hours"], int), _num(r["remote"], int), _num(r["external"], int),
@@ -100,7 +102,7 @@ def load_db(jobs_csv=JOBS_CSV):
         ))
         job_skills += [(r["refnr"], s) for s in r["skills"].split("|") if s]
         job_majors += [(r["refnr"], m) for m in r["majors"].split("|") if m]
-    db.executemany(f"INSERT INTO jobs VALUES ({','.join('?' * 20)})", jobs)
+    db.executemany(f"INSERT INTO jobs VALUES ({','.join('?' * 22)})", jobs)
     db.executemany("INSERT INTO job_skills VALUES (?, ?)", job_skills)
     db.executemany("INSERT INTO job_majors VALUES (?, ?)", job_majors)
     return db
@@ -244,22 +246,47 @@ def insights(totals, categories, cities, skills):
 
 
 def build_checker(db, summary):
-    """Compact job list for the skill checker: indices instead of repeated strings.
+    """Compact per-posting data for the interactive parts of the site.
+
+    The site filters and aggregates these rows in the browser (by field, city,
+    German level and skills), so every chart can react to the filters. Strings
+    are replaced by indices into the lists next to them.
 
     Returns (checker, postings). postings.json holds the display fields for the
-    same jobs in the same order; it's larger, so the site only loads it when
-    someone opens the list of matching postings.
+    same postings in the same order; it's larger, so the site only loads it
+    when the job list is shown.
     """
     skills = [s for s in summary["skills"] if s["jobs"] >= MIN_CHECKER_SKILL_JOBS]
     skill_idx = {s["id"]: i for i, s in enumerate(skills)}
     cats = [c["key"] for c in summary["categories"]]
     cat_idx = {k: i for i, k in enumerate(cats)}
-    cities = [c["city"] for c in summary["cities"]]
-    city_idx = {k: i for i, k in enumerate(cities)}
     german_codes = ["none", "plus", "implicit", "required"]
+    rows_in = query(db, "checker_jobs")
+
+    # Every place with at least one posting, biggest first, with the median
+    # coordinates of its postings (for the map).
+    places = defaultdict(list)
+    for r in rows_in:
+        if r["city"]:
+            places[r["city"]].append((r["lat"], r["lon"]))
+
+    def median(values):
+        v = sorted(x for x in values if x is not None)
+        return v[len(v) // 2] if v else None
+
+    city_list = sorted(places, key=lambda c: (-len(places[c]), c))
+    city_idx = {c: i for i, c in enumerate(city_list)}
+    cities = [{
+        "name": c,
+        "lat": median(p[0] for p in places[c]),
+        "lon": median(p[1] for p in places[c]),
+        "jobs": len(places[c]),
+    } for c in city_list]
+    # Employers only as numbers: enough to spot a median driven by one company.
+    company_idx = {c: i for i, c in enumerate(sorted({r["company"] for r in rows_in}))}
 
     jobs, rows = [], []
-    for r in query(db, "checker_jobs"):
+    for r in rows_in:
         ids = sorted(skill_idx[s] for s in (r["skills"] or "").split("|") if s in skill_idx)
         jobs.append([
             cat_idx.get(r["category"], -1),
@@ -267,15 +294,21 @@ def build_checker(db, summary):
             german_codes.index(r["german"]) if r["german"] in german_codes else 2,
             r["pay"],
             ids,
+            int(r["role_first"]),
+            int(r["role_city_first"]),
+            company_idx[r["company"]],
         ])
         rows.append([r["refnr"], r["title"], r["company"], r["city"], r["published"]])
     checker = {
         "as_of": summary["as_of"],
-        "fields": ["category", "city", "german", "pay", "skills"],
+        "fields": ["category", "city", "german", "pay", "skills", "role_first", "role_city_first", "company"],
         "skills": [{"id": s["id"], "label": s["label"], "group": s["group"], "jobs": s["jobs"]} for s in skills],
         "categories": cats,
+        "category_labels": {c["key"]: c["label"] for c in summary["categories"]},
         "cities": cities,
         "german": german_codes,
+        "min_pay_sample": MIN_PAY_SAMPLE,
+        "max_employer_share": MAX_EMPLOYER_SHARE,
         "jobs": jobs,
     }
     postings = {
@@ -333,7 +366,9 @@ def main():
     checker, postings = build_checker(db, summary)
     history = build_history(update_history(db, summary["as_of"]))
 
-    outputs = [("summary.json", summary), ("checker.json", checker), ("postings.json", postings), ("history.json", history)]
+    rules = patterns.export([s["id"] for s in checker["skills"]])
+    outputs = [("summary.json", summary), ("checker.json", checker), ("postings.json", postings),
+               ("history.json", history), ("patterns.json", rules)]
     for name, data in outputs:
         path = write_json(name, data)
         print(f"wrote {os.path.relpath(path, ROOT)} ({os.path.getsize(path) / 1024:.0f} KB)")

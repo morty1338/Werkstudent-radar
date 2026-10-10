@@ -115,6 +115,12 @@ def test_checker_uses_indices(db):
     assert refs == sorted(refs)
     pay_by_ref = {row[0]: job[3] for row, job in zip(postings["rows"], checker["jobs"])}
     assert pay_by_ref["c"] == 20.0 and pay_by_ref["d2"] == 13.0
+    # role flags: the chain's role counts once nationally, once in each city
+    flags = {row[0]: (job[5], job[6]) for row, job in zip(postings["rows"], checker["jobs"])}
+    assert flags["d1"] == (1, 1) and flags["d2"] == (0, 1) and flags["d3"] == (0, 1)
+    # every place is listed, biggest first
+    assert [c["name"] for c in checker["cities"]][0] == "Berlin"
+    assert {c["name"] for c in checker["cities"]} == {"Berlin", "Hamburg", "München"}
     skill_ids = [s["id"] for s in checker["skills"]]
     job_a = next(j for j in checker["jobs"] if j[3] == 15.0)
     assert sorted(skill_ids[i] for i in job_a[4]) == ["python", "sql"]

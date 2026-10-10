@@ -29,10 +29,13 @@ def _has_cue(text, m):
     return bool(_SKILL_CUE.search(text, max(0, m.start() - 80), m.end() + 40))
 
 
-def find_skills(text):
+def find_skills(text, require_context=True):
+    """Skill ids mentioned in text. In job postings, broad domain terms need a
+    requirement cue nearby; a CV lists the person's own skills, so the site
+    analyses CVs with require_context=False."""
     found = []
     for sid, rx in _SKILL_RX:
-        if sid in CONTEXT_REQUIRED:
+        if require_context and sid in CONTEXT_REQUIRED:
             if any(_has_cue(text, m) for m in rx.finditer(text)):
                 found.append(sid)
         elif rx.search(text):
