@@ -7,6 +7,7 @@
 
 import { esc, fmt } from "./charts.js?v=dev";
 import { gapPlan } from "./gap.js?v=dev";
+import { t } from "./i18n.js?v=dev";
 
 const POPULAR = 24;
 const PAGE = 15;
@@ -78,11 +79,11 @@ export function initMatch(ctx, initialIds) {
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((data) => {
           // Both files come from the same build; otherwise positions don't line up.
-          if (data.as_of !== D.as_of || data.rows.length !== D.jobs.length) throw new Error("the data is being updated, please reload");
+          if (data.as_of !== D.as_of || data.rows.length !== D.jobs.length) throw new Error(t("check.updating"));
           postings = data;
           renderList();
         })
-        .catch((err) => { el.list.innerHTML = `<p class="empty">Couldn't load the postings (${esc(err.message)}).</p>`; });
+        .catch((err) => { el.list.innerHTML = `<p class="empty">${esc(t("check.load_error", { msg: err.message }))}</p>`; });
     }
     return loading;
   }
@@ -154,54 +155,52 @@ export function initMatch(ctx, initialIds) {
     el.chips.innerHTML = visible.length
       ? visible
           .map((i) => `<button type="button" class="chip${st.cvFound.has(i) ? " found" : ""}" data-skill="${i}" aria-pressed="${selected.has(i)}"
-              title="Asked for in ${fmt.int(D.skills[i].jobs)} postings">${esc(D.skills[i].label)}</button>`)
+              title="${esc(t("check.chip_title", { n: fmt.int(D.skills[i].jobs) }))}">${esc(D.skills[i].label)}</button>`)
           .join("")
-      : `<p class="empty">No skill matches “${esc(q)}”.</p>`;
-    el.all.textContent = st.showAll ? "Show fewer skills" : `Show all ${D.skills.length} skills`;
+      : `<p class="empty">${esc(t("check.no_skill", { q }))}</p>`;
+    el.all.textContent = st.showAll ? t("check.fewer") : t("check.all_skills", { n: fmt.int(D.skills.length) });
     el.all.hidden = Boolean(q);
     el.clear.hidden = !selected.size;
   }
 
   function renderSummary(r) {
     const toggle = (label) =>
-      `<button type="button" class="btn${st.open ? " btn-quiet" : ""}" data-act="jobs" aria-expanded="${st.open}">${st.open ? "Hide jobs" : label}</button>`;
+      `<button type="button" class="btn${st.open ? " btn-quiet" : ""}" data-act="jobs" aria-expanded="${st.open}">${st.open ? t("check.hide_jobs") : label}</button>`;
     if (!selected.size) {
-      el.summary.innerHTML = `<p class="match-empty">Pick a few skills on the left and this shows how many jobs fit.</p>
-        <div class="summary-actions">${toggle(`Browse all ${fmt.int(r.pool.length)} jobs`)}</div>`;
+      el.summary.innerHTML = `<p class="match-empty">${esc(t("check.empty"))}</p>
+        <div class="summary-actions">${toggle(t("check.browse", { n: fmt.int(r.pool.length) }))}</div>`;
       return;
     }
     const share = r.listed.length ? r.matched.length / r.listed.length : 0;
     el.summary.innerHTML = `
       <div class="match-big">${fmt.pct(share, 0)}</div>
-      <div class="match-text">of jobs that list skills fit you: <strong>${fmt.int(r.matched.length)}</strong>${
-        r.near.length ? `, and ${fmt.int(r.near.length)} more need one extra skill` : ""}.</div>
+      <div class="match-text">${t("check.fit", { n: fmt.int(r.matched.length), near: r.near.length ? t("check.near", { n: fmt.int(r.near.length) }) : "" })}</div>
       <div class="meter" aria-hidden="true"><div style="width:${share * 100}%"></div></div>
       ${r.plan.length ? gapText(r) : ""}
-      <div class="summary-actions">${toggle(`Show ${fmt.int(r.matched.length)} matching jobs`)}</div>`;
+      <div class="summary-actions">${toggle(t("check.show_matching", { n: fmt.int(r.matched.length) }))}</div>`;
   }
 
   // "Learn SQL and Power BI to qualify for 48 more jobs", then the steps as chips to add.
   function gapText(r) {
     const two = r.plan.slice(0, 2);
-    const names = two.map((p) => `<strong>${esc(D.skills[p.skill].label)}</strong>`).join(" and ");
+    const names = two.map((p) => `<strong>${esc(D.skills[p.skill].label)}</strong>`).join(t("and"));
     const extra = two[two.length - 1].total;
     const steps = r.plan
       .map((p, k) => `${k ? '<span class="gap-then" aria-hidden="true">→</span>' : ""}<button type="button" class="chip add" data-skill="${p.skill}"
-          title="${k ? "After the skills before it, opens" : "Opens"} ${fmt.int(p.gain)} more jobs">${esc(D.skills[p.skill].label)} <small>+${fmt.int(p.gain)}</small></button>`)
+          title="${esc(t(k ? "check.gap_then" : "check.gap_first", { n: fmt.int(p.gain) }))}">${esc(D.skills[p.skill].label)} <small>+${fmt.int(p.gain)}</small></button>`)
       .join("");
     return `<div class="learn">
-        <p class="gap-text">Learn ${names} to qualify for <strong>${fmt.int(extra)}</strong> more jobs
-          (${fmt.int(r.matched.length)} → ${fmt.int(r.matched.length + extra)}).</p>
-        <span class="learn-label">Learn next</span>${steps}
+        <p class="gap-text">${t("check.gap", { names, n: fmt.int(extra), from: fmt.int(r.matched.length), to: fmt.int(r.matched.length + extra) })}</p>
+        <span class="learn-label">${esc(t("check.learn_next"))}</span>${steps}
       </div>`;
   }
 
   function renderTabs(r) {
     if (!st.tab) st.tab = selected.size ? "match" : "all";
     const tabs = [
-      ["match", `You qualify (${fmt.int(r.matched.length)})`, selected.size > 0],
-      ["near", `One skill away (${fmt.int(r.near.length)})`, selected.size > 0],
-      ["all", `All jobs (${fmt.int(r.pool.length)})`, true],
+      ["match", t("check.tab_match", { n: fmt.int(r.matched.length) }), selected.size > 0],
+      ["near", t("check.tab_near", { n: fmt.int(r.near.length) }), selected.size > 0],
+      ["all", t("check.tab_all", { n: fmt.int(r.pool.length) }), true],
     ].filter((t) => t[2]);
     if (!tabs.some((t) => t[0] === st.tab)) st.tab = "all";
     el.tabs.innerHTML = tabs
@@ -215,10 +214,10 @@ export function initMatch(ctx, initialIds) {
     const r = last;
     renderTabs(r);
     el.chip.innerHTML = st.mustSkill != null
-      ? `<span class="filter-chip">Jobs asking for ${esc(D.skills[st.mustSkill].label)} <button type="button" aria-label="Remove">×</button></span>`
+      ? `<span class="filter-chip">${esc(t("check.asking_for", { skill: D.skills[st.mustSkill].label }))} <button type="button" aria-label="${esc(t("check.remove"))}">×</button></span>`
       : "";
     if (!postings) {
-      el.list.innerHTML = `<p class="empty">Loading jobs…</p>`;
+      el.list.innerHTML = `<p class="empty">${esc(t("check.loading"))}</p>`;
       el.more.hidden = true;
       ensurePostings();
       return;
@@ -239,9 +238,9 @@ export function initMatch(ctx, initialIds) {
     );
     el.list.innerHTML = items.length
       ? items.slice(0, st.shown).map(([i, missing]) => row(i, missing)).join("")
-      : `<p class="empty">${st.tab === "match" ? "No matches yet. Add skills, or check “One skill away”." : "No jobs for this selection."}</p>`;
+      : `<p class="empty">${esc(t(st.tab === "match" ? "check.no_matches" : "check.no_jobs"))}</p>`;
     el.more.hidden = items.length <= st.shown;
-    el.more.textContent = `Show more (${fmt.int(items.length - st.shown)} left)`;
+    el.more.textContent = t("check.more", { n: fmt.int(items.length - st.shown) });
   }
 
   function row(i, missing) {
@@ -249,14 +248,14 @@ export function initMatch(ctx, initialIds) {
     const j = D.jobs[i];
     // Bundesagentur postings link via the reference number; company career sites have their own URL.
     const url = link || postings.url.replace("{refnr}", encodeURIComponent(refnr));
-    const need = missing ? `<span class="badge need">+ ${missing.map((s) => esc(D.skills[s].label)).join(" or ")}</span>` : "";
-    const en = j[J.DE] <= 1 ? `<span class="badge en">${j[J.DE] === 0 ? "No German needed" : "German a plus"}</span>` : "";
+    const need = missing ? `<span class="badge need">+ ${missing.map((s) => esc(D.skills[s].label)).join(t("or"))}</span>` : "";
+    const en = j[J.DE] <= 1 ? `<span class="badge en">${esc(t(j[J.DE] === 0 ? "check.no_german" : "check.german_plus"))}</span>` : "";
     const yours = j[J.SKILLS].filter((s) => selected.has(s)).slice(0, 4).map((s) => esc(D.skills[s].label));
     return `<div class="job">
       <a href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
       <div class="meta">${esc(company)} · ${esc(city || "—")}${published ? ` · ${esc(fmt.shortDate(published))}` : ""}</div>
       ${yours.length ? `<div class="why">✓ ${yours.join(" · ")}</div>` : ""}
-      <div class="side">${j[J.PAY] != null ? `<span class="pay">${fmt.eur(j[J.PAY])}/h</span>` : ""}${need}${en}</div>
+      <div class="side">${j[J.PAY] != null ? `<span class="pay">${fmt.eur(j[J.PAY])}${t("check.per_hour")}</span>` : ""}${need}${en}</div>
     </div>`;
   }
 
@@ -277,7 +276,7 @@ export function initMatch(ctx, initialIds) {
     headline: () => {
       if (!selected.size || !last) return null;
       const share = last.listed.length ? last.matched.length / last.listed.length : 0;
-      return { value: fmt.pct(share, 0), sub: `${fmt.int(last.matched.length)} jobs fit your ${selected.size} skills →` };
+      return { value: fmt.pct(share, 0), sub: t("check.headline", { n: fmt.int(last.matched.length), k: selected.size }) };
     },
   };
 }

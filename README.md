@@ -250,6 +250,11 @@ for 10 minutes, so the deploy stamps its commit into the asset URLs
   pay, field and the link to the original posting, never the job text. Feed URLs
   have no version suffix so subscriptions keep working. Linked from the page
   ("Subscribe to new jobs") and announced with `<link rel="alternate">`.
+- **German and English.** A switch in the header (`?lang=de` in the URL, like the
+  filters) changes every text, number and date format (`€16.00` / `16,00 €`).
+  All strings, both languages side by side, are in one dictionary,
+  [`i18n.js`](docs/assets/i18n.js); a test checks that every key the page uses
+  exists in both.
 - **SQL playground** (section 07, [`sql.js`](docs/assets/sql.js)): DuckDB compiled to
   WebAssembly runs SQL in the browser on `postings.parquet`, with four example
   queries (median pay by field with roles counted once, skills in jobs without

@@ -78,7 +78,7 @@ Rules for every phase:
       over a Parquet export of aggregated postings (no texts); 3–4 example queries.
 - [ ] Lighthouse CI (desktop) in GitHub Actions; Performance, Accessibility,
       Best Practices ≥ 90.
-- [ ] German/English UI toggle: strings in one dictionary, language in the URL.
+- [x] German/English UI toggle: strings in one dictionary, language in the URL.
 
 ## Phase 7 — Packaging
 

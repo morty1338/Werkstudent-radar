@@ -2,15 +2,23 @@
 // stays interactive: rows and marks carry data-* attributes that the page
 // listens to, and every mark has a tooltip (data-tip).
 
+import { lang, locale, t } from "./i18n.js?v=dev";
+
+// Numbers, money and dates in the page's language: "€16.00", "4,822" in English,
+// "16,00 €", "4.822" in German.
+const num = (v, digits) => v.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const PCT = lang === "de" ? "\u202f%" : "%";
+
 export const fmt = {
-  eur: (v) => (v == null ? "—" : `€${v.toFixed(2)}`),
-  eur0: (v) => (v == null ? "—" : `€${Math.round(v)}`),
-  pct: (v, digits = 1) => (v == null ? "—" : `${(v * 100).toFixed(digits)}%`),
-  int: (v) => (v == null ? "—" : Math.round(v).toLocaleString("en-GB")),
-  signedPct: (v) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}%`),
+  eur: (v) => (v == null ? "—" : lang === "de" ? `${num(v, 2)} €` : `€${num(v, 2)}`),
+  eur0: (v) => (v == null ? "—" : lang === "de" ? `${num(Math.round(v), 0)} €` : `€${Math.round(v)}`),
+  num2: (v) => (v == null ? "—" : num(v, 2)),
+  pct: (v, digits = 1) => (v == null ? "—" : `${num(v * 100, digits)}${PCT}`),
+  int: (v) => (v == null ? "—" : Math.round(v).toLocaleString(locale)),
+  signedPct: (v) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${num(Math.abs(v * 100), 1)}${PCT}`),
   date: (iso) =>
-    new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
-  shortDate: (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+    new Date(`${iso}T00:00:00`).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" }),
+  shortDate: (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString(locale, { day: "numeric", month: "short" }),
 };
 
 export function esc(s) {
@@ -131,7 +139,7 @@ export function rollDigits(el, from = "") {
 // rows: [{ key, label, sub?, value, text, tip?, muted?, selected? }]
 // Rows with a key are buttons: the page handles clicks via data-key.
 
-export function barList(el, rows, { max, empty = "No data for this selection.", dim = true } = {}) {
+export function barList(el, rows, { max, empty = t("chart.no_data"), dim = true } = {}) {
   if (!rows.length) {
     el.innerHTML = `<p class="empty">${esc(empty)}</p>`;
     return;
@@ -180,7 +188,7 @@ export function histogram(el, bins, { median, axisTitle } = {}) {
 // --- Dot-range rows: median dot on a p25–p75 bar, on a shared € scale --------------
 // rows: [{ key, label, sub, p25, median, p75, tip, muted, selected }]
 
-export function dotRange(el, rows, { min, max, ticks, empty = "Not enough pay data for this selection." } = {}) {
+export function dotRange(el, rows, { min, max, ticks, empty = t("pay.dots_empty") } = {}) {
   if (!rows.length) {
     el.innerHTML = `<p class="empty">${esc(empty)}</p>`;
     return;
@@ -191,7 +199,7 @@ export function dotRange(el, rows, { min, max, ticks, empty = "Not enough pay da
     <div class="dots">
       <div class="dot-row dot-axis" aria-hidden="true">
         <div></div>
-        <div class="dot-track">${ticks.map((t) => `<span style="left:${x(t)}%">€${t}</span>`).join("")}</div>
+        <div class="dot-track">${ticks.map((v) => `<span style="left:${x(v)}%">${lang === "de" ? `${v} €` : `€${v}`}</span>`).join("")}</div>
         <div></div>
       </div>
       ${rows
@@ -259,7 +267,7 @@ export function bubbleMap(el, points) {
     el.dataset.near = "";
     clickNearest(el);
   }
-  el.innerHTML = `<svg class="map" viewBox="-30 -10 ${W + 60} ${H + 20}" role="img" aria-label="Map of Werkstudent postings by place">
+  el.innerHTML = `<svg class="map" viewBox="-30 -10 ${W + 60} ${H + 20}" role="img" aria-label="${esc(t("where.map_aria"))}">
     <defs><clipPath id="map-land"><path d="${land}"/></clipPath></defs>
     <path class="map-land" d="${land}"/>
     <g class="map-radar" clip-path="url(#map-land)" aria-hidden="true">
@@ -300,7 +308,7 @@ export function lineChart(el, dates, values, { format = fmt.int, label = "", ban
     .map((d, i) => ({ d, v: values[i], lo: band?.lo?.[i] ?? null, hi: band?.hi?.[i] ?? null }))
     .filter((p) => p.v != null);
   if (!pts.length) {
-    el.innerHTML = `<p class="empty">No data yet.</p>`;
+    el.innerHTML = `<p class="empty">${esc(t("chart.no_data"))}</p>`;
     return;
   }
 
@@ -341,9 +349,9 @@ export function lineChart(el, dates, values, { format = fmt.int, label = "", ban
             .map((p) => `${x(p.i).toFixed(1)},${y(p.lo).toFixed(1)}`)
             .join("L")}Z`
       : "";
-    const ci = (p) => (p.lo != null ? ` (95% CI ${format(p.lo)}–${format(p.hi)})` : "");
+    const ci = (p) => (p.lo != null ? t("chart.ci", { lo: format(p.lo), hi: format(p.hi) }) : "");
 
-    el.innerHTML = `<svg data-hover viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}: latest ${esc(format(last.v))}${esc(ci(last))}">
+    el.innerHTML = `<svg data-hover viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("chart.latest", { label, v: format(last.v) }))}${esc(ci(last))}">
       <g class="grid">${grid}</g>
       <g class="axis">${yLabels}${xLabels}</g>
       ${bandPath ? `<path class="band" d="${bandPath}"></path>` : ""}
@@ -388,9 +396,9 @@ export function lineChart(el, dates, values, { format = fmt.int, label = "", ban
 // rows: [[days, share, lo, hi, atRisk], ...] from lifetimes.json, starting at day 0.
 // Drawn as steps (Kaplan–Meier) with the 95% band behind it.
 
-export function survivalChart(el, rows, { label = "Still online" } = {}) {
+export function survivalChart(el, rows) {
   if (!rows || rows.length < 2) {
-    el.innerHTML = `<p class="empty">Not enough postings have gone offline yet.</p>`;
+    el.innerHTML = `<p class="empty">${esc(t("life.empty"))}</p>`;
     return;
   }
   const draw = () => {
@@ -409,15 +417,15 @@ export function survivalChart(el, rows, { label = "Still online" } = {}) {
     band += "Z";
     const ticks = [0, 0.25, 0.5, 0.75, 1];
     const grid = ticks.map((v) => `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"></line>`).join("");
-    const yLabels = ticks.map((v) => `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v * 100}%</text>`).join("");
+    const yLabels = ticks.map((v) => `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${fmt.pct(v, 0)}</text>`).join("");
     const dayStep = niceStep(span, 4);
     const xTicks = [];
-    for (let t = 0; t <= span + 1e-9; t += dayStep) xTicks.push(t);
-    const xLabels = xTicks.map((t) => `<text x="${x(t)}" y="${H - 6}" text-anchor="middle">${t}d</text>`).join("");
+    for (let d = 0; d <= span + 1e-9; d += dayStep) xTicks.push(d);
+    const xLabels = xTicks.map((d) => `<text x="${x(d)}" y="${H - 6}" text-anchor="middle">${d}${t("life.day_suffix")}</text>`).join("");
     const last = rows[rows.length - 1];
     const half = rows.find((r) => r[1] <= 0.5);
 
-    el.innerHTML = `<svg data-hover viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)} after ${tMax} days: ${fmt.pct(last[1], 0)}">
+    el.innerHTML = `<svg data-hover viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("life.aria", { d: tMax, pct: fmt.pct(last[1], 0) }))}">
       <g class="grid">${grid}</g>
       <g class="axis">${yLabels}${xLabels}</g>
       <path class="band" d="${band}"></path>
@@ -432,13 +440,13 @@ export function survivalChart(el, rows, { label = "Still online" } = {}) {
     const cross = svg.querySelector(".crosshair");
     svg.addEventListener("pointermove", (e) => {
       const rect = svg.getBoundingClientRect();
-      const t = Math.max(0, Math.min(tMax, (((e.clientX - rect.left) / rect.width) * W - m.l) / (W - m.l - m.r) * span));
-      const r = [...rows].reverse().find((row) => row[0] <= t) ?? rows[0];
-      cross.setAttribute("x1", x(t));
-      cross.setAttribute("x2", x(t));
+      const day = Math.max(0, Math.min(tMax, (((e.clientX - rect.left) / rect.width) * W - m.l) / (W - m.l - m.r) * span));
+      const r = [...rows].reverse().find((row) => row[0] <= day) ?? rows[0];
+      cross.setAttribute("x1", x(day));
+      cross.setAttribute("x2", x(day));
       cross.setAttribute("visibility", "visible");
       showTooltip(
-        `<strong>Day ${Math.round(t)} after publication</strong><br>${fmt.pct(r[1], 0)} still online (95% CI ${fmt.pct(r[2], 0)}–${fmt.pct(r[3], 0)})<br>${fmt.int(r[4])} postings observed at the last step`,
+        t("life.tip", { d: Math.round(day), pct: fmt.pct(r[1], 0), lo: fmt.pct(r[2], 0), hi: fmt.pct(r[3], 0), n: fmt.int(r[4]) }),
         e.clientX, e.clientY,
       );
     });

@@ -4,13 +4,14 @@
 // and is only loaded when someone opens the playground.
 
 import { esc, fmt } from "./charts.js?v=dev";
+import { t } from "./i18n.js?v=dev";
 
 const DUCKDB = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0";
 const MAX_ROWS = 200;
 
 export const EXAMPLES = [
   {
-    title: "Median pay by field",
+    title: t("query.ex1"),
     sql: `-- Postings online today; each role (company + title) counted once, as on the site
 WITH roles AS (
   SELECT * FROM postings
@@ -25,7 +26,7 @@ HAVING count(*) >= 10
 ORDER BY median_pay DESC;`,
   },
   {
-    title: "Skills in jobs without German",
+    title: t("query.ex2"),
     sql: `SELECT s.label AS skill, count(*) AS postings
 FROM postings p, unnest(p.skills) AS u(skill)
 JOIN skills s ON s.id = u.skill
@@ -35,7 +36,7 @@ ORDER BY postings DESC
 LIMIT 15;`,
   },
   {
-    title: "Best-paid skills",
+    title: t("query.ex3"),
     sql: `SELECT s.label AS skill,
        count(*) AS with_pay,
        median(p.pay) AS median_pay
@@ -48,7 +49,7 @@ ORDER BY median_pay DESC
 LIMIT 10;`,
   },
   {
-    title: "IT jobs from €18/h by city",
+    title: t("query.ex4"),
     sql: `SELECT city, count(*) AS jobs, round(avg(pay), 2) AS avg_pay
 FROM postings
 WHERE online AND field = 'it' AND pay >= 18 AND city IS NOT NULL
@@ -106,7 +107,7 @@ export function initSql() {
 
   async function execute() {
     run.disabled = true;
-    status.textContent = ready ? "Running…" : "Loading DuckDB (about 7 MB, once)…";
+    status.textContent = t(ready ? "query.running" : "query.loading");
     try {
       const conn = await start();
       const t0 = performance.now();
@@ -115,7 +116,7 @@ export function initSql() {
       const cols = table.schema.fields.map((f) => f.name);
       const types = table.schema.fields.map((f) => String(f.type));
       const rows = table.toArray().slice(0, MAX_ROWS);
-      status.textContent = `${fmt.int(table.numRows)} row${table.numRows === 1 ? "" : "s"} in ${ms} ms${table.numRows > MAX_ROWS ? ` · first ${MAX_ROWS} shown` : ""}`;
+      status.textContent = t("query.rows", { n: table.numRows, v: fmt.int(table.numRows), ms }) + (table.numRows > MAX_ROWS ? t("query.first", { m: MAX_ROWS }) : "");
       out.innerHTML = `<table><thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows
         .map((r) => `<tr>${cols.map((c, k) => `<td>${esc(cell(r[c], types[k]))}</td>`).join("")}</tr>`)
         .join("")}</tbody></table>`;

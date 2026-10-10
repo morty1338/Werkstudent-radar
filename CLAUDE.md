@@ -29,6 +29,7 @@ numbers, never job text.
 - `assets/app.js` — state, filter bar, sections 01–05 (where, pay, skills, degrees, trends), URL sync
 - `assets/charts.js` — chart helpers (`barList`, `histogram`, `dotRange`, `bubbleMap`, `lineChart` with optional CI band, `survivalChart`), tooltip, `rollDigits` (KPI tile animation, only for values that changed), `fmt`, `esc`
 - `assets/match.js` — section 06 "Check your skills": skill chips, match summary, collapsible job list
+- `assets/i18n.js` — UI language (`?lang=de`, default English): `STRINGS` holds every UI text with `en` and `de` side by side; `t(key, vars)`; `fieldLabel`/`groupLabel`/`skillLabel` translate data labels; `applyStatic()` fills `data-i18n` (text), `data-i18n-html` and `data-i18n-attr="attr:key"` in `index.html`. New UI text goes into `STRINGS`, never inline (a test checks every used key exists in both languages). `fmt` in `charts.js` formats numbers/dates for the language
 - `assets/sql.js` — section 07 SQL playground: DuckDB-WASM 1.29.0 from jsDelivr, loaded only when `#sql` is opened; `EXAMPLES` are run by a pytest against the Parquet export
 - `assets/gap.js` — skill-gap plan (`gapPlan`, greedy by marginal gain; no imports, tested in Node)
 - `assets/stats.js` — bootstrap 95% CI of a median (`medianCI`, same method as `radar/stats.py`, memoised)

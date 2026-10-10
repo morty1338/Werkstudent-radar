@@ -28,35 +28,38 @@
 <body>
   <header class="site-header">
     <div class="wrap header-row">
-      <a class="brand" href="#top" aria-label="Werkstudent Radar, back to top">
+      <a class="brand" href="#top" aria-label="Werkstudent Radar, back to top" data-i18n-attr="aria-label:brand.aria">
         <img src="favicon.svg?v=dev" alt="" width="24" height="24">
         <span>Werkstudent Radar</span>
       </a>
-      <nav class="nav" aria-label="Sections">
-        <a href="#where"><b class="nav-num" aria-hidden="true">01</b>Jobs</a>
-        <a href="#pay"><b class="nav-num" aria-hidden="true">02</b>Pay</a>
-        <a href="#skills"><b class="nav-num" aria-hidden="true">03</b>Skills</a>
-        <a href="#programmes"><b class="nav-num" aria-hidden="true">04</b>Degrees</a>
-        <a href="#trends"><b class="nav-num" aria-hidden="true">05</b>Trends</a>
-        <a href="#check" aria-label="Your skills"><b class="nav-num" aria-hidden="true">06</b><span class="nav-full">Your skills</span><span class="nav-short">Match</span></a>
+      <nav class="nav" aria-label="Sections" data-i18n-attr="aria-label:nav.aria">
+        <a href="#where"><b class="nav-num" aria-hidden="true">01</b><span data-i18n="nav.where">Jobs</span></a>
+        <a href="#pay"><b class="nav-num" aria-hidden="true">02</b><span data-i18n="nav.pay">Pay</span></a>
+        <a href="#skills"><b class="nav-num" aria-hidden="true">03</b><span data-i18n="nav.skills">Skills</span></a>
+        <a href="#programmes"><b class="nav-num" aria-hidden="true">04</b><span data-i18n="nav.programmes">Degrees</span></a>
+        <a href="#trends"><b class="nav-num" aria-hidden="true">05</b><span data-i18n="nav.trends">Trends</span></a>
+        <a href="#check" aria-label="Your skills" data-i18n-attr="aria-label:nav.check"><b class="nav-num" aria-hidden="true">06</b><span class="nav-full" data-i18n="nav.check">Your skills</span><span class="nav-short" data-i18n="nav.check_short">Match</span></a>
       </nav>
+      <div class="lang-switch" role="group" aria-label="Language" data-i18n-attr="aria-label:lang.aria">
+        <button type="button" data-lang="en" lang="en" aria-pressed="true">EN</button><button type="button" data-lang="de" lang="de" aria-pressed="false">DE</button>
+      </div>
     </div>
     <div class="filterbar" id="filterbar">
       <div class="wrap filter-row">
-        <button type="button" class="filters-btn" id="f-open" aria-expanded="false" aria-controls="f-sheet">Filters</button>
+        <button type="button" class="filters-btn" id="f-open" aria-expanded="false" aria-controls="f-sheet" data-i18n="filter.open">Filters</button>
         <div class="filter-chips" id="f-chips"></div>
         <!-- Inline on wide screens; a bottom sheet behind the Filters button on phones. -->
         <div class="filter-controls" id="f-sheet">
-          <div class="sheet-head"><strong>Filters</strong><button type="button" class="link-btn" id="f-close">Close</button></div>
-          <label class="sr-only" for="f-field">Field</label>
-          <select id="f-field"><option value="">All fields</option></select>
-          <label class="sr-only" for="f-city">City</label>
-          <select id="f-city"><option value="">All of Germany</option></select>
-          <label class="switch"><input type="checkbox" id="f-nogerman"><span>No German needed</span></label>
+          <div class="sheet-head"><strong data-i18n="filter.open">Filters</strong><button type="button" class="link-btn" id="f-close" data-i18n="filter.close">Close</button></div>
+          <label class="sr-only" for="f-field" data-i18n="filter.field">Field</label>
+          <select id="f-field"><option value="" data-i18n="filter.all_fields">All fields</option></select>
+          <label class="sr-only" for="f-city" data-i18n="filter.city">City</label>
+          <select id="f-city"><option value="" data-i18n="filter.all_germany">All of Germany</option></select>
+          <label class="switch"><input type="checkbox" id="f-nogerman"><span data-i18n="filter.no_german">No German needed</span></label>
           <button type="button" class="btn sheet-done" id="f-done">Show jobs</button>
         </div>
         <span class="filter-count" id="f-count"></span>
-        <button type="button" class="link-btn" id="f-reset" hidden>Reset</button>
+        <button type="button" class="link-btn" id="f-reset" hidden data-i18n="filter.reset">Reset</button>
       </div>
     </div>
     <div class="sheet-backdrop" id="f-backdrop" hidden></div>
@@ -65,7 +68,7 @@
   <main id="top">
     <section class="hero wrap">
       <p class="status" id="status"></p>
-      <h1>Werkstudent jobs in Germany, in&nbsp;numbers</h1>
+      <h1 data-i18n-html="hero.title">Werkstudent jobs in Germany, in&nbsp;numbers</h1>
       <p class="lede">Every Werkstudent posting on the Bundesagentur für Arbeit job board and on company career sites.</p>
       <div class="tiles" id="tiles">
         <div class="tile skeleton"></div><div class="tile skeleton"></div><div class="tile skeleton"></div><div class="tile skeleton"></div>
@@ -75,15 +78,15 @@
 
     <section id="where" class="wrap section">
       <p class="step">01</p>
-      <h2>Where are the jobs?</h2>
+      <h2 data-i18n="where.title">Where are the jobs?</h2>
       <p class="insight" id="where-insight"></p>
       <div class="grid-map">
         <div class="card">
-          <h3>By place <span class="hint-inline">click a bubble to filter</span></h3>
+          <h3><span data-i18n="where.by_place">By place</span> <span class="hint-inline" data-i18n="where.by_place_hint">click a bubble to filter</span></h3>
           <div id="map"></div>
         </div>
         <div class="card">
-          <h3>By field <span class="hint-inline">click to filter</span></h3>
+          <h3><span data-i18n="where.by_field">By field</span> <span class="hint-inline" data-i18n="where.by_field_hint">click to filter</span></h3>
           <div id="fields" class="chart"></div>
         </div>
       </div>
@@ -91,30 +94,30 @@
 
     <section id="pay" class="wrap section">
       <p class="step">02</p>
-      <h2>What does it pay?</h2>
+      <h2 data-i18n="pay.title">What does it pay?</h2>
       <p class="insight" id="pay-insight"></p>
       <div class="grid-2">
         <div class="card">
-          <h3>Hourly pay</h3>
+          <h3 data-i18n="pay.hourly">Hourly pay</h3>
           <div id="pay-hist"></div>
         </div>
         <div class="card">
           <div class="card-head">
-            <h3>Typical range</h3>
+            <h3 data-i18n="pay.range">Typical range</h3>
             <div class="seg" id="pay-seg" role="tablist">
-              <button type="button" data-by="field" aria-selected="true">by field</button>
-              <button type="button" data-by="city" aria-selected="false">by city</button>
+              <button type="button" data-by="field" aria-selected="true" data-i18n="pay.by_field">by field</button>
+              <button type="button" data-by="city" aria-selected="false" data-i18n="pay.by_city">by city</button>
             </div>
           </div>
           <div id="pay-range"></div>
-          <p class="legend-line"><span class="lg-range"></span> middle half of rates <span class="lg-dot"></span> median</p>
+          <p class="legend-line" data-i18n-html="pay.legend"><span class="lg-range"></span> middle half of rates <span class="lg-dot"></span> median</p>
         </div>
       </div>
     </section>
 
     <section id="skills" class="wrap section">
       <p class="step">03</p>
-      <h2>Which skills are asked for?</h2>
+      <h2 data-i18n="skills.title">Which skills are asked for?</h2>
       <p class="insight" id="skills-insight"></p>
       <div class="chips-row" id="skill-groups"></div>
       <div class="grid-skills">
@@ -127,21 +130,21 @@
 
     <section id="programmes" class="wrap section">
       <p class="step">04</p>
-      <h2>What does your degree lead to?</h2>
+      <h2 data-i18n="programmes.title">What does your degree lead to?</h2>
       <div class="tabs" role="tablist" id="mj-tabs"></div>
       <div class="card" id="mj-panel" role="tabpanel"></div>
     </section>
 
     <section id="trends" class="wrap section">
       <p class="step">05</p>
-      <h2>How is it changing?</h2>
+      <h2 data-i18n="trends.title">How is it changing?</h2>
       <p class="insight" id="trends-insight"></p>
       <div class="grid-2">
-        <div class="card"><h3>Postings online</h3><div id="tr-jobs" class="line-chart"></div></div>
-        <div class="card"><h3>Median hourly pay <span class="hint-inline">shaded: 95% confidence interval</span></h3><div id="tr-pay" class="line-chart"></div></div>
+        <div class="card"><h3 data-i18n="trends.jobs">Postings online</h3><div id="tr-jobs" class="line-chart"></div></div>
+        <div class="card"><h3><span data-i18n="trends.pay">Median hourly pay</span> <span class="hint-inline" data-i18n="trends.pay_hint">shaded: 95% confidence interval</span></h3><div id="tr-pay" class="line-chart"></div></div>
       </div>
       <div class="card card-wide" id="lifetimes">
-        <h3>How long postings stay online <span class="hint-inline">share still online, by days since publication</span></h3>
+        <h3><span data-i18n="life.title">How long postings stay online</span> <span class="hint-inline" data-i18n="life.hint">share still online, by days since publication</span></h3>
         <div id="tr-life" class="line-chart survival"></div>
         <p class="legend-line" id="tr-life-note"></p>
       </div>
@@ -149,28 +152,28 @@
 
     <section id="check" class="wrap section">
       <p class="step">06</p>
-      <h2>Check your skills</h2>
-      <p class="insight">Tick what you can do, or let your CV fill it in, to see the share of these jobs you qualify for.</p>
+      <h2 data-i18n="check.title">Check your skills</h2>
+      <p class="insight" data-i18n="check.insight">Tick what you can do, or let your CV fill it in, to see the share of these jobs you qualify for.</p>
       <details class="subscribe">
-        <summary>Subscribe to new jobs</summary>
+        <summary data-i18n="subscribe.summary">Subscribe to new jobs</summary>
         <div class="subscribe-body" id="subscribe" aria-live="polite"></div>
       </details>
       <div class="card check-card">
         <div class="check-grid">
           <div>
             <div class="card-head">
-              <h3>Your skills</h3>
+              <h3 data-i18n="check.your_skills">Your skills</h3>
               <div class="check-actions">
-                <label class="btn-small" title="Your CV is read in your browser and never uploaded">
+                <label class="btn-small" title="Your CV is read in your browser and never uploaded" data-i18n-attr="title:cv.title">
                   <input type="file" id="cv-file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
-                  Upload CV
+                  <span data-i18n="cv.upload">Upload CV</span>
                 </label>
-                <button type="button" class="link-btn" id="my-clear" hidden>Clear</button>
+                <button type="button" class="link-btn" id="my-clear" hidden data-i18n="check.clear">Clear</button>
               </div>
             </div>
             <p class="cv-note" id="cv-result" aria-live="polite"></p>
-            <label class="sr-only" for="my-search">Find a skill</label>
-            <input id="my-search" type="search" placeholder="Find a skill: SQL, SAP, Figma…">
+            <label class="sr-only" for="my-search" data-i18n="check.search">Find a skill</label>
+            <input id="my-search" type="search" placeholder="Find a skill: SQL, SAP, Figma…" data-i18n-attr="placeholder:check.search_ph">
             <div id="my-chips" class="chip-groups"></div>
             <button type="button" class="link-btn" id="my-all"></button>
           </div>
@@ -179,45 +182,45 @@
         <div id="jobs-panel" class="jobs-panel" hidden>
           <div class="card-head">
             <div class="tabs" id="job-tabs" role="tablist"></div>
-            <label class="sr-only" for="job-sort">Sort</label>
+            <label class="sr-only" for="job-sort" data-i18n="sort.label">Sort</label>
             <select id="job-sort">
-              <option value="best">Best fit first</option>
-              <option value="newest">Newest first</option>
-              <option value="pay">Highest pay first</option>
+              <option value="best" data-i18n="sort.best">Best fit first</option>
+              <option value="newest" data-i18n="sort.newest">Newest first</option>
+              <option value="pay" data-i18n="sort.pay">Highest pay first</option>
             </select>
           </div>
           <div id="job-filter-chip"></div>
           <div id="job-list" class="job-list" aria-live="polite"></div>
-          <button class="btn btn-quiet" id="job-more" type="button" hidden>Show more</button>
+          <button class="btn btn-quiet" id="job-more" type="button" hidden data-i18n="check.show_more">Show more</button>
         </div>
       </div>
     </section>
 
     <section id="query" class="wrap section">
       <p class="step">07</p>
-      <h2>Query the data yourself</h2>
-      <p class="insight">Every posting since the first scan as one table: field, city, pay, German, skills, first and last seen. SQL runs in your browser with DuckDB. No job texts.</p>
+      <h2 data-i18n="query.title">Query the data yourself</h2>
+      <p class="insight" data-i18n="query.insight">Every posting since the first scan as one table: field, city, pay, German, skills, first and last seen. SQL runs in your browser with DuckDB. No job texts.</p>
       <details class="card sql" id="sql">
-        <summary>Open the SQL playground <span class="hint-inline">loads DuckDB-WASM (a few MB) from jsDelivr when opened</span></summary>
+        <summary><span data-i18n="query.open">Open the SQL playground</span> <span class="hint-inline" data-i18n="query.open_hint">loads DuckDB-WASM (a few MB) from jsDelivr when opened</span></summary>
         <div class="sql-body">
           <div class="chips-row" id="sql-examples"></div>
-          <label class="sr-only" for="sql-input">SQL query</label>
+          <label class="sr-only" for="sql-input" data-i18n="query.label">SQL query</label>
           <textarea id="sql-input" spellcheck="false" autocapitalize="off" autocomplete="off" rows="11"></textarea>
           <div class="sql-bar">
-            <button type="button" class="btn" id="sql-run">Run</button>
+            <button type="button" class="btn" id="sql-run" data-i18n="query.run">Run</button>
             <span class="hint-inline">Ctrl/⌘ + Enter</span>
             <span class="sql-status" id="sql-status" aria-live="polite"></span>
           </div>
           <div class="sql-out" id="sql-out"></div>
-          <p class="sql-help">Tables: <code>postings</code> (refnr, source, title, company, field, field_label, city, lat, lon, pay, pay_min, pay_max, german, remote, published, first_seen, last_seen, online, skills[], url) and <code>skills</code> (id, label, group). Pay is €/h; <code>german</code> is required, implicit, plus or none. Download: <a href="data/postings.parquet" download>postings.parquet</a>, <a href="data/skills.parquet" download>skills.parquet</a>.</p>
+          <p class="sql-help" data-i18n-html="query.help">Tables: <code>postings</code> (refnr, source, title, company, field, field_label, city, lat, lon, pay, pay_min, pay_max, german, remote, published, first_seen, last_seen, online, skills[], url) and <code>skills</code> (id, label, group). Pay is €/h; <code>german</code> is required, implicit, plus or none. Download: <a href="data/postings.parquet" download>postings.parquet</a>, <a href="data/skills.parquet" download>skills.parquet</a>.</p>
         </div>
       </details>
     </section>
 
     <section class="wrap section about">
       <details>
-        <summary>About the data</summary>
-        <div class="about-body">
+        <summary data-i18n="about.summary">About the data</summary>
+        <div class="about-body" data-i18n-html="about.body">
           <p><strong>Sources.</strong> Every morning a script collects all postings with “Werkstudent”, “Working Student” or “Werkstudierende” in the title from the public job search of the <a href="https://www.arbeitsagentur.de/jobsuche/">Bundesagentur für Arbeit</a>, plus Werkstudent postings from companies' own career sites through the free <a href="https://www.arbeitnow.com/">Arbeitnow</a> job API. A posting found in both counts once. LinkedIn, StepStone and Indeed don't allow automated collection and aren't used; many of their postings come from the same company career sites.</p>
           <p><strong>Pay</strong> comes from the posting's salary fields or phrases like “17,50 € pro Stunde”. Each role counts once, and a median needs at least 10 roles.</p>
           <p><strong>Skills and German</strong> are found by rules with German and English synonyms, checked against 100 labelled postings. <a href="https://github.com/morty1338/werkstudent-radar#accuracy">How accurate they are</a>.</p>
@@ -229,10 +232,10 @@
   </main>
 
   <footer class="site-footer">
-    <div class="wrap">Werkstudent Radar · data: Bundesagentur für Arbeit and company career sites via <a href="https://www.arbeitnow.com/">Arbeitnow</a> · <a href="https://github.com/morty1338/werkstudent-radar">source code</a></div>
+    <div class="wrap" data-i18n-html="footer">Werkstudent Radar · data: Bundesagentur für Arbeit and company career sites via <a href="https://www.arbeitnow.com/">Arbeitnow</a> · <a href="https://github.com/morty1338/werkstudent-radar">source code</a></div>
   </footer>
 
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
-  <noscript><p class="wrap">This page needs JavaScript to load the data.</p></noscript>
+  <noscript><p class="wrap">This page needs JavaScript to load the data. Diese Seite braucht JavaScript, um die Daten zu laden.</p></noscript>
 </body>
 </html>

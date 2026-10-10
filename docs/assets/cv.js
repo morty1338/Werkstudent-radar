@@ -4,6 +4,7 @@
 // "Your skills". Nothing is uploaded or stored.
 
 import { esc } from "./charts.js?v=dev";
+import { t } from "./i18n.js?v=dev";
 
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -74,13 +75,13 @@ async function docxText(buffer) {
 }
 
 async function fileText(file) {
-  if (file.size > MAX_BYTES) throw new Error("the file is larger than 10 MB");
+  if (file.size > MAX_BYTES) throw new Error(t("cv.too_big"));
   const name = file.name.toLowerCase();
   if (name.endsWith(".txt") || file.type === "text/plain") return file.text();
   const buffer = await file.arrayBuffer();
   if (name.endsWith(".pdf") || file.type === "application/pdf") return pdfText(buffer);
   if (name.endsWith(".docx")) return docxText(buffer);
-  throw new Error("please use a PDF, DOCX or TXT file");
+  throw new Error(t("cv.format"));
 }
 
 // --- Analysis ------------------------------------------------------------------------------------
@@ -106,25 +107,25 @@ export function initCv(ctx) {
   });
 
   async function run(file) {
-    out.textContent = `Reading ${file.name}…`;
+    out.textContent = t("cv.reading", { file: file.name });
     try {
       const text = (await fileText(file)).replace(/\s+/g, " ");
       if (text.trim().length < 40) {
-        out.textContent = `No text found in ${file.name}. A scanned PDF can't be read; tick your skills by hand instead.`;
+        out.textContent = t("cv.no_text", { file: file.name });
         return;
       }
       const found = await analyse(text);
       const idx = found.skills.map((id) => D.skills.findIndex((s) => s.id === id)).filter((i) => i >= 0);
       if (!idx.length) {
-        out.textContent = `No skills from our list found in ${file.name}.`;
+        out.textContent = t("cv.no_skills", { file: file.name });
         return;
       }
       ctx.match.setSkills(idx, { fromCv: true });
       const major = found.majors[0];
-      out.innerHTML = `✓ ${idx.length} skills found in your CV and ticked below${
-        major ? ` · degree: <button type="button" class="link-btn" data-programme="${esc(major.id)}">${esc(major.label)}</button>` : ""}`;
+      out.innerHTML = `${esc(t("cv.found", { n: idx.length }))}${
+        major ? `${esc(t("cv.degree"))}<button type="button" class="link-btn" data-programme="${esc(major.id)}">${esc(major.label)}</button>` : ""}`;
     } catch (err) {
-      out.textContent = `Couldn't read ${file.name}: ${err.message}.`;
+      out.textContent = t("cv.error", { file: file.name, msg: err.message });
     } finally {
       input.value = "";
     }

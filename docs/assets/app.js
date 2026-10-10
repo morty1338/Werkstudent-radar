@@ -1,5 +1,6 @@
 import { barList, bubbleMap, dotRange, esc, fmt, histogram, initTooltip, lineChart, rollDigits, survivalChart } from "./charts.js?v=dev";
 import { initCv } from "./cv.js?v=dev";
+import { applyStatic, fieldLabel, groupLabel, initLangSwitch, lang, skillLabel as localSkillLabel, t } from "./i18n.js?v=dev";
 import { initMatch } from "./match.js?v=dev";
 import { initSql } from "./sql.js?v=dev";
 import { medianCI } from "./stats.js?v=dev";
@@ -25,6 +26,8 @@ function quantile(sorted, q) {
 }
 
 async function main() {
+  applyStatic();
+  initLangSwitch();
   initTooltip();
   let S, D, H, L, C;
   try {
@@ -34,9 +37,13 @@ async function main() {
       load("lifetimes").catch(() => null), load("cooccurrence").catch(() => null),
     ]);
   } catch (e) {
-    document.getElementById("tiles").innerHTML = `<p class="stale">Couldn't load the data (${esc(e.message)}). Please try again later.</p>`;
+    document.getElementById("tiles").innerHTML = `<p class="stale">${esc(t("load.error", { msg: e.message }))}</p>`;
     return;
   }
+
+  // Labels in the page's language (the data has English ones).
+  for (const s of [...D.skills, ...S.skills]) s.label = localSkillLabel(s.id, s.label);
+  for (const k of Object.keys(D.category_labels)) D.category_labels[k] = fieldLabel(k, D.category_labels[k]);
 
   const params = new URLSearchParams(location.search);
   const state = {
@@ -48,7 +55,7 @@ async function main() {
     skill: null,
   };
 
-  const catLabel = (i) => (i < 0 ? "Other" : D.category_labels[D.categories[i]] ?? D.categories[i]);
+  const catLabel = (i) => (i < 0 ? fieldLabel("other", "Other") : D.category_labels[D.categories[i]] ?? D.categories[i]);
   const skillLabel = (id) => D.skills.find((s) => s.id === id)?.label ?? S.skills.find((s) => s.id === id)?.label ?? id;
 
   // Postings that pass the filters; `except` drops one filter so a chart can show
@@ -92,11 +99,11 @@ async function main() {
       employers: byCompany.size,
       topShare: values.length ? top / values.length : 0,
       enough: sample && precise,
-      why: !sample ? "too few rates stated" : precise ? "" : "too few rates to be sure",
+      why: !sample ? t("why.few") : precise ? "" : t("why.unsure"),
     };
   }
-  // "95% CI €15.40–17.60"
-  const ciText = (lo, hi) => (lo == null ? "" : `95% CI ${fmt.eur(lo)}–${hi.toFixed(2)}`);
+  // "95% CI €15.40–17.60" / "95%-KI 15,40–17,60 €"
+  const ciText = (lo, hi) => (lo == null ? "" : t("ci", { lo: fmt.num2(lo), hi: fmt.num2(hi) }));
 
   const ctx = { D, S, J, state, pool, payStats, catLabel, skillLabel, render: () => render(), syncUrl: () => syncUrl() };
 
@@ -162,29 +169,28 @@ async function main() {
     fField.classList.toggle("active", state.field >= 0);
     fCity.classList.toggle("active", state.city >= 0);
     fReset.hidden = state.field < 0 && state.city < 0 && !state.noGerman;
-    document.getElementById("f-count").textContent = `${fmt.int(all.length)} jobs`;
-    document.getElementById("f-done").textContent = `Show ${fmt.int(all.length)} jobs`;
+    document.getElementById("f-count").textContent = t("filter.count", { n: fmt.int(all.length) });
+    document.getElementById("f-done").textContent = t("filter.show", { n: fmt.int(all.length) });
     renderSubscribe();
     const chips = [
       state.field >= 0 && ["field", catLabel(state.field)],
       state.city >= 0 && ["city", D.cities[state.city].name],
-      state.noGerman && ["german", "No German"],
+      state.noGerman && ["german", t("filter.chip_no_german")],
     ].filter(Boolean);
     document.getElementById("f-chips").innerHTML = chips
-      .map(([k, label]) => `<button type="button" class="filter-pill" data-clear="${k}" aria-label="Remove filter: ${esc(label)}">${esc(label)} <span aria-hidden="true">✕</span></button>`)
+      .map(([k, label]) => `<button type="button" class="filter-pill" data-clear="${k}" aria-label="${esc(t("filter.remove", { x: label }))}">${esc(label)} <span aria-hidden="true">✕</span></button>`)
       .join("");
   }
 
   // RSS feeds of new postings: all fields, plus the selected field's own feed.
   function renderSubscribe() {
     const field = state.field >= 0 ? D.categories[state.field] : null;
-    const list = [["all", "All new Werkstudent jobs"], ...(field ? [[field, `New jobs in ${catLabel(state.field)}`]] : [])];
+    const list = [["all", t("subscribe.all")], ...(field ? [[field, t("subscribe.field", { field: catLabel(state.field) })]] : [])];
     document.getElementById("subscribe").innerHTML = `
-      <p>RSS feeds of postings that are new on the market, updated every morning. Paste a link into a feed reader
-        (Feedly, Inoreader, NetNewsWire…); each item links to the original posting.</p>
+      <p>${esc(t("subscribe.text"))}</p>
       ${list.map(([id, label]) => `<div class="feed-row"><a href="feeds/${id}.xml">${esc(label)}</a>
-        <button type="button" class="link-btn" data-copy="feeds/${id}.xml">Copy link</button></div>`).join("")}
-      ${field ? "" : `<p class="hint">Pick a field in the filters to get a feed for just that field.</p>`}`;
+        <button type="button" class="link-btn" data-copy="feeds/${id}.xml">${esc(t("subscribe.copy"))}</button></div>`).join("")}
+      ${field ? "" : `<p class="hint">${esc(t("subscribe.hint"))}</p>`}`;
   }
   document.getElementById("subscribe").addEventListener("click", async (e) => {
     const b = e.target.closest("[data-copy]");
@@ -192,11 +198,11 @@ async function main() {
     const url = new URL(b.dataset.copy, location.href).href;
     try {
       await navigator.clipboard.writeText(url);
-      b.textContent = "Copied ✓";
+      b.textContent = t("subscribe.copied");
     } catch {
       b.textContent = url; // no clipboard access: show the address to copy by hand
     }
-    setTimeout(() => { b.textContent = "Copy link"; }, 2500);
+    setTimeout(() => { b.textContent = t("subscribe.copy"); }, 2500);
   });
 
   // Clicks and Enter/Space on any data-key row inside a container.
@@ -244,10 +250,10 @@ async function main() {
     const [bigCity, bigCount] = [...perCity].sort((a, b) => b[1] - a[1])[0] ?? [-1, 0];
     const where = [state.field >= 0 ? catLabel(state.field) : null, state.city >= 0 ? D.cities[state.city].name : null].filter(Boolean).join(" · ");
     const tiles = [
-      { href: "#where", label: where ? `Jobs · ${where}` : "Werkstudent jobs online", value: fmt.int(all.length), sub: `in ${fmt.int(places)} ${places === 1 ? "place" : "places"}` },
-      { href: "#pay", label: "Median pay", value: ps.enough ? fmt.eur(ps.median) : "—", sub: ps.enough ? `per hour · ${ciText(...ps.ci)}` : ps.why },
-      { href: "#skills", label: "Most asked-for skill", value: top ? top.label : "—", sub: top ? `in ${fmt.pct(top.share, 0)} of jobs` : "", small: true },
-      { href: "#where", label: "Most jobs in", value: bigCity >= 0 ? D.cities[bigCity].name : "—", sub: bigCity >= 0 ? `${fmt.int(bigCount)} jobs` : "", small: true },
+      { href: "#where", label: where ? t("tile.jobs_where", { where }) : t("tile.jobs_online"), value: fmt.int(all.length), sub: t("tile.places", { n: places, v: fmt.int(places) }) },
+      { href: "#pay", label: t("tile.median"), value: ps.enough ? fmt.eur(ps.median) : "—", sub: ps.enough ? t("tile.per_hour", { ci: ciText(...ps.ci) }) : ps.why },
+      { href: "#skills", label: t("tile.top_skill"), value: top ? top.label : "—", sub: top ? t("tile.skill_share", { pct: fmt.pct(top.share, 0) }) : "", small: true },
+      { href: "#where", label: t("tile.most_jobs"), value: bigCity >= 0 ? D.cities[bigCity].name : "—", sub: bigCity >= 0 ? t("jobs.n", { n: bigCount, v: fmt.int(bigCount) }) : "", small: true },
     ];
     const box = document.getElementById("tiles");
     const before = [...box.querySelectorAll(".value")].map((v) => v.dataset.value);
@@ -284,7 +290,7 @@ async function main() {
         value: perCity.get(i) || 0,
         selected: state.city === i,
         label: labelled.has(i),
-        tip: `<strong>${esc(c.name)}</strong><br>${fmt.int(perCity.get(i) || 0)} ${perCity.get(i) === 1 ? "job" : "jobs"}`,
+        tip: `<strong>${esc(c.name)}</strong><br>${t("jobs.n", { n: perCity.get(i) || 0, v: fmt.int(perCity.get(i) || 0) })}`,
       })),
     );
 
@@ -299,21 +305,21 @@ async function main() {
         value: n,
         text: fmt.int(n),
         selected: state.field === k,
-        tip: `<strong>${esc(catLabel(k))}</strong><br>${fmt.int(n)} jobs · ${fmt.pct(n / fieldPool.length, 0)}`,
+        tip: `<strong>${esc(catLabel(k))}</strong><br>${t("where.field_tip", { n: fmt.int(n), pct: fmt.pct(n / fieldPool.length, 0) })}`,
       }));
     barList(document.getElementById("fields"), rows);
 
     const topCity = ranked[0];
     const topField = rows[0];
     const el = document.getElementById("where-insight");
-    if (!all.length || !topCity) el.innerHTML = "No jobs match these filters.";
+    if (!all.length || !topCity) el.textContent = t("where.none");
     else if (state.city >= 0) {
-      el.innerHTML = `<strong>${fmt.int(all.length)}</strong> jobs in ${esc(D.cities[state.city].name)}${state.field >= 0 ? ` in ${esc(catLabel(state.field))}` : ""}.${
-        state.field < 0 && topField ? ` Most are in <strong>${esc(topField.label)}</strong>.` : ""}`;
+      el.innerHTML = t("where.city", { n: fmt.int(all.length), city: esc(D.cities[state.city].name), field: state.field >= 0 ? esc(catLabel(state.field)) : "" }) +
+        (state.field < 0 && topField ? t("where.city_most", { field: esc(topField.label) }) : "");
     } else {
-      const next = ranked.slice(1, 3).map(([c]) => esc(D.cities[c].name)).join(" and ");
-      el.innerHTML = `<strong>${esc(D.cities[topCity[0]].name)}</strong> has the most jobs (${fmt.int(topCity[1])})${next ? `, followed by ${next}` : ""}.${
-        state.field < 0 && topField ? ` The biggest field is <strong>${esc(topField.label)}</strong>.` : ""}`;
+      const next = ranked.slice(1, 3).map(([c]) => esc(D.cities[c].name)).join(t("and"));
+      el.innerHTML = t("where.top", { city: esc(D.cities[topCity[0]].name), n: fmt.int(topCity[1]), next }) +
+        (state.field < 0 && topField ? t("where.biggest", { field: esc(topField.label) }) : "");
     }
   }
 
@@ -332,7 +338,8 @@ async function main() {
           p75: ps.p75,
           muted,
           selected: (state.payBy === "field" ? state.field : state.city) === k,
-          tip: `<strong>${esc(label(k))}</strong><br>Median ${fmt.eur(ps.median)}/h · ${ciText(...ps.ci)}<br>Half earn ${fmt.eur(ps.p25)}–${fmt.eur(ps.p75)}<br>${ps.n} roles from ${ps.employers} employers${muted ? `<br>${fmt.pct(ps.topShare, 0)} of these rates come from one employer` : ""}`,
+          tip: t("pay.range_tip", { label: esc(label(k)), median: fmt.eur(ps.median), ci: ciText(...ps.ci), p25: fmt.eur(ps.p25), p75: fmt.eur(ps.p75), n: fmt.int(ps.n), emp: fmt.int(ps.employers) }) +
+            (muted ? t("pay.one_employer", { pct: fmt.pct(ps.topShare, 0) }) : ""),
           jobs,
         };
       })
@@ -349,20 +356,20 @@ async function main() {
         label: b === PAY_BINS - 1 ? `${lo}+` : String(lo),
         value: n,
         inRange: ps.n > 0 && lo + 1 > ps.p25 && lo <= ps.p75,
-        tip: `<strong>${b === PAY_BINS - 1 ? `€${lo} or more` : `€${lo}–${lo}.99`}</strong><br>${n} roles`,
+        tip: `<strong>${t(b === PAY_BINS - 1 ? "pay.bin_top" : "pay.bin", { lo })}</strong><br>${t("pay.roles", { n, v: fmt.int(n) })}`,
       };
     });
     const hist = document.getElementById("pay-hist");
     if (ps.n) {
       histogram(hist, bins, {
-        median: { pos: Math.min(PAY_BINS, Math.max(0, ps.median - PAY_MIN)), label: `median ${fmt.eur(ps.median)}` },
-        axisTitle: `€ per hour · ${fmt.int(ps.n)} roles with a stated rate`,
+        median: { pos: Math.min(PAY_BINS, Math.max(0, ps.median - PAY_MIN)), label: t("pay.median_marker", { v: fmt.eur(ps.median) }) },
+        axisTitle: t("pay.axis", { n: fmt.int(ps.n) }),
       });
       hist.insertAdjacentHTML("beforeend", `<div class="pay-trio">
-        <div><span>${fmt.eur(ps.p25)}</span>a quarter earn less</div>
-        <div class="mid"><span>${fmt.eur(ps.median)}</span>median${ps.ci ? `<small class="ci">${ciText(...ps.ci)}</small>` : ""}</div>
-        <div><span>${fmt.eur(ps.p75)}</span>a quarter earn more</div></div>`);
-    } else hist.innerHTML = `<p class="empty">No stated rates for this selection.</p>`;
+        <div><span>${fmt.eur(ps.p25)}</span>${t("pay.q1")}</div>
+        <div class="mid"><span>${fmt.eur(ps.median)}</span>${t("pay.median")}${ps.ci ? `<small class="ci">${ciText(...ps.ci)}</small>` : ""}</div>
+        <div><span>${fmt.eur(ps.p75)}</span>${t("pay.q3")}</div></div>`);
+    } else hist.innerHTML = `<p class="empty">${esc(t("pay.no_rates"))}</p>`;
 
     // Rows: fields (ignoring the field filter) or cities (ignoring the city filter).
     const groups = new Map();
@@ -386,13 +393,13 @@ async function main() {
 
     const el = document.getElementById("pay-insight");
     if (!ps.enough) {
-      el.innerHTML = `Too few jobs state an hourly rate for this selection (${ps.n}). Try widening the filters.`;
+      el.textContent = t("pay.too_few", { n: fmt.int(ps.n) });
       return;
     }
     const best = rows.find((r) => !r.muted);
     const free = state.payBy === "field" ? state.field < 0 : state.city < 0;
-    el.innerHTML = `Half of the jobs pay between <strong>${fmt.eur(ps.p25)}</strong> and <strong>${fmt.eur(ps.p75)}</strong> an hour.${
-      best && free ? ` <strong>${esc(best.label)}</strong> pays the most (${fmt.eur(best.median)}).` : ""}`;
+    el.innerHTML = t("pay.insight", { p25: fmt.eur(ps.p25), p75: fmt.eur(ps.p75) }) +
+      (best && free ? t("pay.best", { label: esc(best.label), v: fmt.eur(best.median) }) : "");
   }
 
   // --- 03 Skills --------------------------------------------------------------------------
@@ -411,7 +418,7 @@ async function main() {
     if (!groups.includes(state.skillGroup)) state.skillGroup = "All";
     document.getElementById("skill-groups").innerHTML = groups
       .slice(0, 10)
-      .map((g) => `<button type="button" class="chip" data-group="${esc(g)}" aria-pressed="${state.skillGroup === g}">${esc(g)}</button>`)
+      .map((g) => `<button type="button" class="chip" data-group="${esc(g)}" aria-pressed="${state.skillGroup === g}">${esc(g === "All" ? t("skills.all") : groupLabel(g))}</button>`)
       .join("");
     const shown = ranked.filter((r) => state.skillGroup === "All" || r.group === state.skillGroup).slice(0, 15);
     if (state.skill == null || !ranked.some((r) => r.key === state.skill)) state.skill = shown[0]?.key ?? null;
@@ -423,16 +430,16 @@ async function main() {
         value: r.share,
         text: fmt.pct(r.share, r.share < 0.1 ? 1 : 0),
         selected: r.key === state.skill,
-        tip: `<strong>${esc(r.label)}</strong><br>${fmt.int(r.n)} of ${fmt.int(all.length)} jobs`,
+        tip: `<strong>${esc(r.label)}</strong><br>${t("skills.bar_tip", { n: fmt.int(r.n), total: fmt.int(all.length) })}`,
       })),
-      { empty: "No skills found for this selection.", dim: false },
+      { empty: t("skills.empty"), dim: false },
     );
 
     const prog = ranked.find((r) => r.group === "Programming");
     const top = ranked[0];
     document.getElementById("skills-insight").innerHTML = top
-      ? `<strong>${esc(top.label)}</strong> is asked for in ${fmt.pct(top.share, 0)} of jobs.${
-          prog ? ` The most wanted programming language is <strong>${esc(prog.label)}</strong> (${fmt.pct(prog.share, 1)}).` : ""}`
+      ? t("skills.insight", { skill: esc(top.label), pct: fmt.pct(top.share, 0) }) +
+        (prog ? t("skills.prog", { skill: esc(prog.label), pct: fmt.pct(prog.share, 1) }) : "")
       : "";
     renderSkillDetail(all, ranked);
   }
@@ -444,16 +451,16 @@ async function main() {
       .map(([id, lift, share]) => [D.skills.findIndex((s) => s.id === id), lift, share])
       .filter(([j]) => j >= 0)
       .map(([j, lift, share]) => `<button type="button" class="chip" data-skill="${j}"
-          data-tip="${esc(`<strong>${esc(D.skills[j].label)}</strong><br>in ${fmt.pct(share, 0)} of jobs asking for ${esc(D.skills[i].label)}<br>${lift}× as often as by chance`)}">${esc(D.skills[j].label)} <span class="lift">${lift}×</span></button>`)
+          data-tip="${esc(`<strong>${esc(D.skills[j].label)}</strong><br>${t("skills.related_tip", { pct: fmt.pct(share, 0), skill: esc(D.skills[i].label), lift: lift.toLocaleString(lang === "de" ? "de-DE" : "en-GB") })}`)}">${esc(D.skills[j].label)} <span class="lift">${lift.toLocaleString(lang === "de" ? "de-DE" : "en-GB")}×</span></button>`)
       .join("");
-    return chips ? `<h3>Often asked together</h3><div class="chips-row related">${chips}</div>` : "";
+    return chips ? `<h3>${esc(t("skills.related"))}</h3><div class="chips-row related">${chips}</div>` : "";
   }
 
   function renderSkillDetail(all, ranked) {
     const el = document.getElementById("skill-detail");
     const r = ranked.find((x) => x.key === state.skill);
     if (!r) {
-      el.innerHTML = `<p class="empty">Pick a skill to see details.</p>`;
+      el.innerHTML = `<p class="empty">${esc(t("skills.pick"))}</p>`;
       return;
     }
     const withIt = all.filter((i) => D.jobs[i][J.SKILLS].includes(r.key));
@@ -467,18 +474,18 @@ async function main() {
     if (diff != null && Math.abs(diff) < 0.005) diff = null;
     el.innerHTML = `
       <div class="sd-name">${esc(r.label)}</div>
-      <p class="sd-big">in ${fmt.pct(r.share, 1)} of jobs · ${fmt.int(r.n)} postings</p>
+      <p class="sd-big">${t("skills.share", { pct: fmt.pct(r.share, 1), n: fmt.int(r.n) })}</p>
       <div class="sd-stats">
-        <div class="sd-stat"><div class="v">${ps.enough ? fmt.eur(ps.median) : "—"}</div><div class="l">median pay${diff != null ? ` (${fmt.signedPct(diff)} vs all)` : ""}</div>${
+        <div class="sd-stat"><div class="v">${ps.enough ? fmt.eur(ps.median) : "—"}</div><div class="l">${t("skills.median_pay")}${diff != null ? t("skills.vs_all", { d: fmt.signedPct(diff) }) : ""}</div>${
           ps.enough ? `<div class="ci">${ciText(...ps.ci)}</div>` : `<div class="ci">${ps.why}</div>`}</div>
-        <div class="sd-stat"><div class="v">${fmt.pct(topCats[0] ? topCats[0][1] / withIt.length : null, 0)}</div><div class="l">in ${esc(topCats[0] ? catLabel(topCats[0][0]) : "—")}</div></div>
+        <div class="sd-stat"><div class="v">${fmt.pct(topCats[0] ? topCats[0][1] / withIt.length : null, 0)}</div><div class="l">${esc(t("skills.in_field", { field: topCats[0] ? catLabel(topCats[0][0]) : "—" }))}</div></div>
       </div>
-      <h3>Where it's asked for</h3>
+      <h3>${esc(t("skills.where"))}</h3>
       <div id="sd-fields"></div>
       ${related(r.key)}
       <div class="sd-actions">
-        <button type="button" class="btn" data-act="jobs">Show ${fmt.int(r.n)} jobs</button>
-        <button type="button" class="chip" data-act="have" aria-pressed="${have}">${have ? "✓ In your skills" : "+ I have this"}</button>
+        <button type="button" class="btn" data-act="jobs">${t("skills.show_jobs", { n: fmt.int(r.n) })}</button>
+        <button type="button" class="chip" data-act="have" aria-pressed="${have}">${t(have ? "skills.have" : "skills.add")}</button>
       </div>`;
     barList(
       el.querySelector("#sd-fields"),
@@ -518,16 +525,16 @@ async function main() {
       const topField = m.categories[0];
       panel.innerHTML = `
         <div class="mj-stats">
-          <div class="mj-stat"><div class="label">Jobs mentioning it</div><div class="value">${fmt.int(m.jobs)}</div></div>
-          <div class="mj-stat"><div class="label">Share of all jobs</div><div class="value">${fmt.pct(m.share, 0)}</div></div>
-          <div class="mj-stat"><div class="label">Median pay</div><div class="value">${fmt.eur(m.median_pay)}</div>${
+          <div class="mj-stat"><div class="label">${t("programmes.jobs")}</div><div class="value">${fmt.int(m.jobs)}</div></div>
+          <div class="mj-stat"><div class="label">${t("programmes.share")}</div><div class="value">${fmt.pct(m.share, 0)}</div></div>
+          <div class="mj-stat"><div class="label">${t("programmes.median")}</div><div class="value">${fmt.eur(m.median_pay)}</div>${
             m.median_pay != null ? `<div class="ci">${ciText(m.median_pay_lo, m.median_pay_hi)}</div>` : ""}</div>
-          <div class="mj-stat"><div class="label">Top field</div><div class="value" style="font-size:20px">${esc(topField ? catLabel(D.categories.indexOf(topField.key)) : "—")}</div></div>
+          <div class="mj-stat"><div class="label">${t("programmes.top_field")}</div><div class="value" style="font-size:20px">${esc(topField ? catLabel(D.categories.indexOf(topField.key)) : "—")}</div></div>
         </div>
         <div class="mj-grid">
-          <div><h3>Fields</h3><div id="mj-fields"></div></div>
+          <div><h3>${t("programmes.fields")}</h3><div id="mj-fields"></div></div>
           <div>
-            <h3>Skills they ask for <span class="hint-inline">click to add to yours</span></h3>
+            <h3>${t("programmes.skills")} <span class="hint-inline">${t("programmes.skills_hint")}</span></h3>
             <div class="chips-row">${m.skills
               .filter((x) => D.skills.some((s) => s.id === x.key))
               .map((x) => {
@@ -535,7 +542,7 @@ async function main() {
                 return `<button type="button" class="chip" data-skill="${esc(x.key)}" aria-pressed="${ctx.match.has(idx)}">${esc(skillLabel(x.key))}</button>`;
               })
               .join("")}</div>
-            <h3 style="margin-top:18px">Newest postings</h3>
+            <h3 style="margin-top:18px">${t("programmes.newest")}</h3>
             <div class="job-list">${m.examples.slice(0, 5).map((j) => `<div class="job"><a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a><div class="meta">${esc(j.company)} · ${esc(j.city || "—")}</div><div class="side">${j.pay != null ? `<span class="pay">${fmt.eur(j.pay)}</span>` : ""}</div></div>`).join("")}</div>
           </div>
         </div>`;
@@ -558,11 +565,11 @@ async function main() {
     const days = H.dates.length;
     document.getElementById("trends-insight").textContent =
       days < 7
-        ? `A snapshot is taken every morning since ${fmt.date(H.dates[0])}. Trends appear after a few weeks.`
-        : `${days} daily snapshots since ${fmt.date(H.dates[0])}.`;
-    lineChart(document.getElementById("tr-jobs"), H.dates, H.series["total:all:jobs"], { label: "Postings", format: fmt.int });
+        ? t("trends.early", { date: fmt.date(H.dates[0]) })
+        : t("trends.days", { n: fmt.int(days), date: fmt.date(H.dates[0]) });
+    lineChart(document.getElementById("tr-jobs"), H.dates, H.series["total:all:jobs"], { label: t("trends.postings"), format: fmt.int });
     lineChart(document.getElementById("tr-pay"), H.dates, H.series["total:all:median_pay"], {
-      label: "Median pay", format: fmt.eur,
+      label: t("trends.median"), format: fmt.eur,
       band: { lo: H.series["total:all:median_pay_lo"], hi: H.series["total:all:median_pay_hi"] },
     });
     renderLifetimes();
@@ -579,11 +586,9 @@ async function main() {
     const fields = Object.entries(L.by_field)
       .filter(([, f]) => f.median_days != null)
       .sort((a, b) => a[1].median_days - b[1].median_days);
-    const median = L.median_days != null
-      ? `Half of the postings are gone <strong>${L.median_days} days</strong> after publication.`
-      : `More than half are still online <strong>${L.observed_until} days</strong> after publication; the median will show once more postings have gone offline.`;
-    document.getElementById("tr-life-note").innerHTML = `${median} Based on ${fmt.int(L.postings)} Bundesagentur postings, ${fmt.int(L.gone)} of them gone so far.${
-      fields.length ? ` Shortest: ${fields.slice(0, 3).map(([k, f]) => `${esc(catLabel(D.categories.indexOf(k)))} ${f.median_days} days`).join(", ")}.` : ""}`;
+    const median = L.median_days != null ? t("life.median", { n: L.median_days }) : t("life.no_median", { n: L.observed_until });
+    document.getElementById("tr-life-note").innerHTML = median + t("life.based", { n: fmt.int(L.postings), gone: fmt.int(L.gone) }) +
+      (fields.length ? t("life.shortest", { list: fields.slice(0, 3).map(([k, f]) => `${esc(catLabel(D.categories.indexOf(k)))} ${t("life.days", { n: f.median_days })}`).join(", ") }) : "");
   }
 
   // --- Wiring -----------------------------------------------------------------------------------------
@@ -592,6 +597,7 @@ async function main() {
     if (state.field >= 0) p.set("field", D.categories[state.field]);
     if (state.city >= 0) p.set("city", D.cities[state.city].name);
     if (state.noGerman) p.set("german", "no");
+    if (lang !== "en") p.set("lang", lang);
     const skills = ctx.match.ids();
     if (skills.length) p.set("skills", skills.join(","));
     const url = new URL(location.href);
@@ -627,18 +633,17 @@ async function main() {
   const ageDays = Math.floor((Date.now() - new Date(`${D.as_of}T12:00:00`)) / 864e5);
   if (ageDays > 2) {
     const stale = document.getElementById("stale");
-    stale.textContent = `The daily update hasn't run for ${ageDays} days, so these numbers may be out of date.`;
+    stale.textContent = t("status.stale_note", { n: ageDays });
     stale.hidden = false;
   }
   const src = S.totals.by_source || {};
-  document.querySelector(".lede").textContent =
-    `Every Werkstudent posting on the Bundesagentur für Arbeit job board${src.arbeitnow ? `, plus ${fmt.int(src.arbeitnow)} from company career sites` : ""}.`;
+  document.querySelector(".lede").textContent = t("hero.lede", { plus: src.arbeitnow ? fmt.int(src.arbeitnow) : "" });
   const scanned = S.generated_at
-    ? new Date(S.generated_at).toLocaleString("en-GB", { timeZone: "Europe/Berlin", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).replace(",", "")
+    ? new Date(S.generated_at).toLocaleString(lang === "de" ? "de-DE" : "en-GB", { timeZone: "Europe/Berlin", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).replace(",", "")
     : fmt.date(D.as_of);
   const status = document.getElementById("status");
   status.classList.toggle("is-stale", ageDays > 2);
-  status.innerHTML = `<span class="status-dot" aria-hidden="true">●</span> ${ageDays > 2 ? "STALE" : "LIVE"} · LAST SCAN <time datetime="${esc(S.generated_at || D.as_of)}">${esc(scanned)}</time>`;
+  status.innerHTML = `<span class="status-dot" aria-hidden="true">●</span> ${t(ageDays > 2 ? "status.stale" : "status.live")} · ${t("status.last_scan")} <time datetime="${esc(S.generated_at || D.as_of)}">${esc(scanned)}</time>`;
 
   // Mark the section in view in the nav (the bottom tab bar on phones).
   const navLinks = [...document.querySelectorAll(".nav a")];
