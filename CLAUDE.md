@@ -7,7 +7,10 @@ and a static site in `docs/` (GitHub Pages, deployed by `pages.yml`) shows it.
 ## Frontend notes
 
 **Files** (`docs/`, served as-is, no build step):
-- `index.html` — all sections and element ids; `favicon.svg`
+- `index.html` — all sections and element ids; `favicon.svg` (the logo, amber radar)
+- `manifest.json`, `icons/` — PWA manifest and PNG icons (180 apple-touch, 192, 512, also
+  used as maskable: logo at 72% on a full `#0B0B0C` square). Made once from
+  `favicon.svg` (headless Chrome screenshot at 512 px, then `sips -z`); redo them if the logo changes
 - `assets/style.css` — the only stylesheet
 - `assets/app.js` — state, filter bar, sections 01–05 (where, pay, skills, degrees, trends), URL sync
 - `assets/charts.js` — chart helpers (`barList`, `histogram`, `dotRange`, `bubbleMap`, `lineChart`), tooltip, `rollDigits` (KPI tile animation, only for values that changed), `fmt`, `esc`
@@ -52,7 +55,7 @@ Google or another CDN (visitors' IPs would go to a third party). Palette: backgr
 amber; non-highlighted, dimmed and low-confidence marks use `--muted-bar` `#6B6352`.
 
 **Fragile:**
-- Every module import and the `<link>`/`<script>` in `index.html` carry `?v=dev`;
+- Every module import and the `<link>`/`<script>`/logo `<img>` in `index.html` carry `?v=dev`;
   `pages.yml` replaces it with the commit hash (Pages caches files for 10 min).
   New modules must use the same suffix, or a module loads twice.
 - `checker.json` rows are positional (`J` indices in `app.js`); `postings.json`
