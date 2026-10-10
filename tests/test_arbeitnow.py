@@ -61,6 +61,16 @@ def test_werkstudent_by_title_or_type():
     assert not arbeitnow.is_werkstudent_job(job("f", title="Abschluss- oder Projektarbeit im Bereich KI", job_types=["Working student"]))
 
 
+@pytest.mark.parametrize("a, b, same", [
+    (("Acme GmbH", "Werkstudent (m/w/d) Data"), ("ACME GmbH", "Werkstudent Data (w/m/d)"), True),
+    (("Acme GmbH", "Werkstudent – Data"), ("Acme GmbH", "Werkstudent Data"), True),
+    (("Acme GmbH", "Werkstudent Data"), ("Acme AG", "Werkstudent Data"), False),
+    (("Acme GmbH", "Werkstudent Vertrieb"), ("Acme GmbH", "Werkstudent Marketing"), False),
+])
+def test_same_posting_key_ignores_case_gender_tags_and_punctuation(a, b, same):
+    assert (same_posting_key(*a) == same_posting_key(*b)) is same
+
+
 def test_merge_adds_tags_and_skips_duplicates_and_abroad():
     jobs = {}
     ba_keys = {same_posting_key("Big Corp AG", "Werkstudent Controlling (m/w/d)")}

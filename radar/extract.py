@@ -186,8 +186,8 @@ def english_requirement(text, lang):
 
 # --- Hourly pay ------------------------------------------------------------
 
-_NUM = r"(\d{1,2}(?:[.,]\d{1,2})?)"
-_CUR = r"(?:€|eur\b|euro\b|eur\.)"
+_NUM = r"(\d{1,2}(?:[.,]\d{1,2})?)(?:,[-–]{1,2})?"  # "17,50" or "17,–" (whole euros)
+_CUR = r"(?:€|eur\b|euros?\b|eur\.)"
 # "17,50 € brutto pro Stunde", "15 EUR/Std.", "€18 per hour" – marker right after the amount…
 _HOURLY_AFTER = re.compile(
     r"^\s*(?:€|eur\w*)?\s*(?:\(?(?:brutto|netto|gross)\)?\s*)?(?:/|pro|per|je|die|an?|the)\s*(?:std\b|std\.|stunde|h\b|hour)"

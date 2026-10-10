@@ -204,6 +204,33 @@ def test_hourly_pay_regressions(text, expected):
     assert hourly_pay_from_text(text) == expected
 
 
+@pytest.mark.parametrize("text,expected", [
+    ("17,50 € pro Stunde", (17.5, 17.5)),
+    ("17,50 EUR pro Stunde", (17.5, 17.5)),
+    ("17.50 €/h", (17.5, 17.5)),
+    ("€17.50/hour", (17.5, 17.5)),
+    ("Stundenlohn: 17,50 €", (17.5, 17.5)),
+    ("17,– € pro Stunde", (17.0, 17.0)),               # whole euros written with a dash
+    ("15,- bis 17,- € pro Stunde", (15.0, 17.0)),
+    ("17.50 euros per hour", (17.5, 17.5)),
+    ("13,90 € pro Stunde (Mindestlohn)", (13.9, 13.9)),
+    ("17,50 € pro Stunde zzgl. 50 € Zuschuss", (17.5, 17.5)),
+])
+def test_hourly_pay_formats(text, expected):
+    assert hourly_pay_from_text(text) == expected
+
+
+@pytest.mark.parametrize("text", [
+    "538 € im Monat",
+    "2.000 € brutto monatlich",
+    "45.000 € Jahresgehalt",
+    "8,50 € pro Stunde",       # below any legal minimum wage: a typo or an old posting
+    "75 € pro Stunde",         # freelance rate, not a Werkstudent wage
+])
+def test_monthly_yearly_and_implausible_amounts_are_not_hourly_pay(text):
+    assert hourly_pay_from_text(text) is None
+
+
 @pytest.mark.parametrize("text", [
     "Idealerweise erste Erfahrungen mit SAP✓ Sehr gute Deutschkenntnisse✓ Teamfähigkeit",
     "Sehr gute Deutschkenntnisse, Englischkenntnisse sind von Vorteil",
