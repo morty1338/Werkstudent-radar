@@ -1,6 +1,6 @@
-import { barList, bubbleMap, dotRange, esc, fmt, histogram, initTooltip, lineChart } from "./charts.js";
-import { initCv } from "./cv.js";
-import { initMatch } from "./match.js";
+import { barList, bubbleMap, dotRange, esc, fmt, histogram, initTooltip, lineChart } from "./charts.js?v=dev";
+import { initCv } from "./cv.js?v=dev";
+import { initMatch } from "./match.js?v=dev";
 
 // Column positions in checker.json "jobs" rows.
 export const J = { CAT: 0, CITY: 1, DE: 2, PAY: 3, SKILLS: 4, ROLE: 5, ROLE_CITY: 6, COMPANY: 7 };

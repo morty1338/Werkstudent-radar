@@ -3,7 +3,7 @@
 // (exported to data/patterns.json), and the skills found are put into
 // "Your skills". Nothing is uploaded or stored.
 
-import { esc, fmt } from "./charts.js";
+import { esc, fmt } from "./charts.js?v=dev";
 
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38";
 const MAX_BYTES = 10 * 1024 * 1024;

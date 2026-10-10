@@ -5,7 +5,7 @@
 // miss one in four (rounded down), so 1–3 listed skills need all of them,
 // 4–7 allow one gap, 8+ allow two.
 
-import { esc, fmt } from "./charts.js";
+import { esc, fmt } from "./charts.js?v=dev";
 
 const POPULAR = 24;
 const PAGE = 15;

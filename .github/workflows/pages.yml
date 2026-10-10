@@ -36,6 +36,15 @@ jobs:
           # not the one the daily run started from.
           ref: main
 
+      # GitHub Pages lets browsers cache files for 10 minutes. Stamp this
+      # deploy's commit into the asset URLs so a browser never mixes old and
+      # new scripts (which leaves the page empty).
+      - name: Version asset URLs
+        run: |
+          ver=$(git rev-parse --short HEAD)
+          sed -i "s/?v=dev/?v=${ver}/g" docs/index.html docs/assets/*.js
+          grep -c "?v=${ver}" docs/index.html
+
       - uses: actions/configure-pages@v6
 
       - uses: actions/upload-pages-artifact@v5
