@@ -6,6 +6,7 @@
 // 4–7 allow one gap, 8+ allow two.
 
 import { esc, fmt } from "./charts.js?v=dev";
+import { gapPlan } from "./gap.js?v=dev";
 
 const POPULAR = 24;
 const PAGE = 15;
@@ -125,19 +126,18 @@ export function initMatch(ctx, initialIds) {
     const listed = pool.filter((i) => D.jobs[i][J.SKILLS].length);
     const matched = [];
     const near = [];
-    const gains = new Map();
     for (const i of listed) {
       const req = D.jobs[i][J.SKILLS];
       const missing = req.filter((s) => !selected.has(s));
       const allowed = Math.floor(req.length / 4);
       if (missing.length <= allowed) matched.push(i);
-      else if (missing.length === allowed + 1) {
-        near.push([i, missing]);
-        for (const s of missing) gains.set(s, (gains.get(s) || 0) + 1);
-      }
+      else if (missing.length === allowed + 1) near.push([i, missing]);
     }
-    const learn = [...gains].sort((a, b) => b[1] - a[1] || D.skills[b[0]].jobs - D.skills[a[0]].jobs).slice(0, 5);
-    return { pool, listed, matched, near, learn };
+    // Skill gap: the next skills to learn, greedy by how many more postings each makes fit.
+    const plan = selected.size
+      ? gapPlan(listed.map((i) => D.jobs[i][J.SKILLS]), selected, { steps: 3, demand: D.skills.map((x) => x.jobs) })
+      : [];
+    return { pool, listed, matched, near, plan };
   }
 
   // --- Rendering -------------------------------------------------------------------------------------
@@ -176,11 +176,24 @@ export function initMatch(ctx, initialIds) {
       <div class="match-text">of jobs that list skills fit you: <strong>${fmt.int(r.matched.length)}</strong>${
         r.near.length ? `, and ${fmt.int(r.near.length)} more need one extra skill` : ""}.</div>
       <div class="meter" aria-hidden="true"><div style="width:${share * 100}%"></div></div>
-      ${r.learn.length ? `<div class="learn"><span class="learn-label">Learn next</span>${r.learn
-        .slice(0, 3)
-        .map(([sk, n]) => `<button type="button" class="chip add" data-skill="${sk}" title="Opens ${n} more jobs">${esc(D.skills[sk].label)} <small>+${fmt.int(n)}</small></button>`)
-        .join("")}</div>` : ""}
+      ${r.plan.length ? gapText(r) : ""}
       <div class="summary-actions">${toggle(`Show ${fmt.int(r.matched.length)} matching jobs`)}</div>`;
+  }
+
+  // "Learn SQL and Power BI to qualify for 48 more jobs", then the steps as chips to add.
+  function gapText(r) {
+    const two = r.plan.slice(0, 2);
+    const names = two.map((p) => `<strong>${esc(D.skills[p.skill].label)}</strong>`).join(" and ");
+    const extra = two[two.length - 1].total;
+    const steps = r.plan
+      .map((p, k) => `${k ? '<span class="gap-then" aria-hidden="true">→</span>' : ""}<button type="button" class="chip add" data-skill="${p.skill}"
+          title="${k ? "After the skills before it, opens" : "Opens"} ${fmt.int(p.gain)} more jobs">${esc(D.skills[p.skill].label)} <small>+${fmt.int(p.gain)}</small></button>`)
+      .join("");
+    return `<div class="learn">
+        <p class="gap-text">Learn ${names} to qualify for <strong>${fmt.int(extra)}</strong> more jobs
+          (${fmt.int(r.matched.length)} → ${fmt.int(r.matched.length + extra)}).</p>
+        <span class="learn-label">Learn next</span>${steps}
+      </div>`;
   }
 
   function renderTabs(r) {
