@@ -164,13 +164,18 @@ async function main() {
     const ps = payStats(all);
     const places = new Set(all.map((i) => D.jobs[i][J.CITY]).filter((c) => c >= 0)).size;
     const top = topSkills(all)[0];
-    const m = ctx.match.headline();
+    const perCity = new Map();
+    for (const i of all) {
+      const c = D.jobs[i][J.CITY];
+      if (c >= 0) perCity.set(c, (perCity.get(c) || 0) + 1);
+    }
+    const [bigCity, bigCount] = [...perCity].sort((a, b) => b[1] - a[1])[0] ?? [-1, 0];
     const where = [state.field >= 0 ? catLabel(state.field) : null, state.city >= 0 ? D.cities[state.city].name : null].filter(Boolean).join(" · ");
     const tiles = [
       { href: "#where", label: where ? `Jobs · ${where}` : "Werkstudent jobs online", value: fmt.int(all.length), sub: `in ${fmt.int(places)} ${places === 1 ? "place" : "places"}` },
       { href: "#pay", label: "Median pay", value: ps.enough ? fmt.eur(ps.median) : "—", sub: ps.enough ? `per hour · half earn ${fmt.eur0(ps.p25)}–${fmt.eur0(ps.p75)}` : "too few rates stated" },
       { href: "#skills", label: "Most asked-for skill", value: top ? top.label : "—", sub: top ? `in ${fmt.pct(top.share, 0)} of jobs` : "", small: true },
-      { href: "#match", label: m ? "Your match" : "Your jobs", value: m ? m.value : "Find yours", sub: m ? m.sub : "upload your CV or pick skills →", cta: true },
+      { href: "#where", label: "Most jobs in", value: bigCity >= 0 ? D.cities[bigCity].name : "—", sub: bigCity >= 0 ? `${fmt.int(bigCount)} jobs` : "", small: true },
     ];
     document.getElementById("tiles").innerHTML = tiles
       .map((t) => `<a class="tile${t.cta ? " cta" : ""}" href="${t.href}">

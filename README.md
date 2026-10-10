@@ -23,13 +23,13 @@ Berlin on the map or "IT & Software" in a chart and the whole page follows.
    field or city.
 3. **Which skills are asked for?** The most requested skills by group; click one
    for its pay, where it's used, and its jobs.
-4. **Which jobs fit you?** Upload your CV (PDF, DOCX or TXT) or pick skills: the
-   share of jobs you qualify for, what to learn next, and the matching postings
-   with links, best fit first. The CV is analysed in the browser with the same
-   skill dictionary as the postings and is never uploaded.
-5. **What does your degree lead to?** Wirtschaftsinformatik, Informatik, BWL,
+4. **What does your degree lead to?** Wirtschaftsinformatik, Informatik, BWL,
    Wirtschaftsingenieurwesen and more.
-6. **How is it changing?** Daily snapshots from 9 Oct 2026 on.
+5. **How is it changing?** Daily snapshots from 9 Oct 2026 on.
+6. **Check your skills.** Tick skills, or upload a CV (PDF, DOCX or TXT) and its
+   skills are ticked for you, to see the share of jobs you qualify for, what to
+   learn next and the matching postings. The CV is analysed in the browser with
+   the same skill dictionary as the postings and is never uploaded.
 
 ## Quick start
 
@@ -152,7 +152,10 @@ and pull request.
 A static page in plain HTML, CSS and JavaScript (no framework, no build step),
 so it loads instantly and costs nothing to host. Charts are hand-made HTML/SVG
 with light and dark themes. The only third-party code is pdf.js, loaded from
-cdnjs only when someone uploads a PDF. To preview locally:
+cdnjs only when someone uploads a PDF. GitHub Pages lets browsers cache files
+for 10 minutes, so the deploy stamps its commit into the asset URLs
+(`?v=dev` → `?v=<commit>`); otherwise a browser can mix old and new scripts.
+To preview locally:
 
 ```bash
 python3 -m http.server --directory docs
@@ -213,7 +216,7 @@ data/jobs.csv      extracted features (committed)
 data/history.csv   daily metric snapshots (committed)
 data/eval/         evaluation labels and reports (job texts stay local)
 docs/              the website: index.html, assets/app.js (filters, charts),
-                   match.js (skills and job list), cv.js (CV reading), charts.js
+                   match.js (skills check and job list), cv.js (CV reading), charts.js
 docs/data/         JSON consumed by the website
 data/raw/          local raw dumps, one folder per day (not committed)
 ```

@@ -29,7 +29,9 @@
         <a href="#where">Jobs</a>
         <a href="#pay">Pay</a>
         <a href="#skills">Skills</a>
-        <a href="#match" class="nav-cta">Find your jobs</a>
+        <a href="#programmes">Degrees</a>
+        <a href="#trends">Trends</a>
+        <a href="#check">Your skills</a>
       </nav>
     </div>
     <div class="filterbar" id="filterbar">
@@ -107,71 +109,62 @@
       </div>
     </section>
 
-    <section id="match" class="wrap section">
-      <p class="step">04</p>
-      <h2>Which jobs fit you?</h2>
-      <p class="insight">Upload your CV or pick your skills. You'll see the jobs you already qualify for, with links.</p>
-      <div class="grid-match">
-        <div class="match-side">
-          <div class="card cv-card" id="cv-card">
-            <label class="dropzone" id="cv-drop">
-              <input type="file" id="cv-file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
-              <strong>Upload your CV</strong>
-              <span>PDF, DOCX or TXT · analysed on your device, never uploaded</span>
-            </label>
-            <button type="button" class="link-btn" id="cv-paste-toggle">or paste text</button>
-            <div id="cv-paste" hidden>
-              <label class="sr-only" for="cv-text">CV text</label>
-              <textarea id="cv-text" rows="5" placeholder="Paste your CV or a list of your skills"></textarea>
-              <button type="button" class="btn" id="cv-analyse">Analyse</button>
-            </div>
-            <div id="cv-result" aria-live="polite"></div>
-          </div>
-          <div class="card">
-            <div class="card-head">
-              <h3>Your skills</h3>
-              <button type="button" class="link-btn" id="my-clear" hidden>Clear</button>
-            </div>
-            <label class="sr-only" for="my-search">Find a skill</label>
-            <input id="my-search" type="search" placeholder="Find a skill: SQL, SAP, Figma…">
-            <div id="my-chips" class="chip-groups"></div>
-            <button type="button" class="link-btn" id="my-all"></button>
-          </div>
-        </div>
-        <div class="match-main">
-          <div class="card match-summary" id="match-summary" aria-live="polite"></div>
-          <div class="card">
-            <div class="card-head">
-              <div class="tabs" id="job-tabs" role="tablist"></div>
-              <label class="sr-only" for="job-sort">Sort</label>
-              <select id="job-sort">
-                <option value="best">Best fit first</option>
-                <option value="newest">Newest first</option>
-                <option value="pay">Highest pay first</option>
-              </select>
-            </div>
-            <div id="job-filter-chip"></div>
-            <div id="job-list" class="job-list" aria-live="polite"></div>
-            <button class="btn btn-quiet" id="job-more" type="button" hidden>Show more</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <section id="programmes" class="wrap section">
-      <p class="step">05</p>
+      <p class="step">04</p>
       <h2>What does your degree lead to?</h2>
       <div class="tabs" role="tablist" id="mj-tabs"></div>
       <div class="card" id="mj-panel" role="tabpanel"></div>
     </section>
 
     <section id="trends" class="wrap section">
-      <p class="step">06</p>
+      <p class="step">05</p>
       <h2>How is it changing?</h2>
       <p class="insight" id="trends-insight"></p>
       <div class="grid-2">
         <div class="card"><h3>Postings online</h3><div id="tr-jobs" class="line-chart"></div></div>
         <div class="card"><h3>Median hourly pay</h3><div id="tr-pay" class="line-chart"></div></div>
+      </div>
+    </section>
+
+    <section id="check" class="wrap section">
+      <p class="step">06</p>
+      <h2>Check your skills</h2>
+      <p class="insight">Tick what you can do, or let your CV fill it in, to see the share of these jobs you qualify for.</p>
+      <div class="card check-card">
+        <div class="check-grid">
+          <div>
+            <div class="card-head">
+              <h3>Your skills</h3>
+              <div class="check-actions">
+                <label class="btn-small" title="Your CV is read in your browser and never uploaded">
+                  <input type="file" id="cv-file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+                  Upload CV
+                </label>
+                <button type="button" class="link-btn" id="my-clear" hidden>Clear</button>
+              </div>
+            </div>
+            <p class="cv-note" id="cv-result" aria-live="polite"></p>
+            <label class="sr-only" for="my-search">Find a skill</label>
+            <input id="my-search" type="search" placeholder="Find a skill: SQL, SAP, Figma…">
+            <div id="my-chips" class="chip-groups"></div>
+            <button type="button" class="link-btn" id="my-all"></button>
+          </div>
+          <div class="match-summary" id="match-summary" aria-live="polite"></div>
+        </div>
+        <div id="jobs-panel" class="jobs-panel" hidden>
+          <div class="card-head">
+            <div class="tabs" id="job-tabs" role="tablist"></div>
+            <label class="sr-only" for="job-sort">Sort</label>
+            <select id="job-sort">
+              <option value="best">Best fit first</option>
+              <option value="newest">Newest first</option>
+              <option value="pay">Highest pay first</option>
+            </select>
+          </div>
+          <div id="job-filter-chip"></div>
+          <div id="job-list" class="job-list" aria-live="polite"></div>
+          <button class="btn btn-quiet" id="job-more" type="button" hidden>Show more</button>
+        </div>
       </div>
     </section>
 

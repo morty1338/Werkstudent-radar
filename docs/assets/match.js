@@ -15,7 +15,7 @@ export function initMatch(ctx, initialIds) {
   const idxById = new Map(D.skills.map((s, i) => [s.id, i]));
   const byDemand = D.skills.map((_, i) => i).sort((a, b) => D.skills[b].jobs - D.skills[a].jobs);
   const selected = new Set(initialIds.filter((id) => idxById.has(id)).map((id) => idxById.get(id)));
-  const st = { tab: null, sort: "best", shown: PAGE, search: "", showAll: false, mustSkill: null, cvFound: new Set() };
+  const st = { tab: null, sort: "best", shown: PAGE, search: "", showAll: false, mustSkill: null, cvFound: new Set(), open: false };
   let postings = null;
   let loading = null;
   let last = null;
@@ -31,6 +31,7 @@ export function initMatch(ctx, initialIds) {
     list: document.getElementById("job-list"),
     more: document.getElementById("job-more"),
     chip: document.getElementById("job-filter-chip"),
+    panel: document.getElementById("jobs-panel"),
   };
 
   // --- Events ---------------------------------------------------------------------------
@@ -44,6 +45,10 @@ export function initMatch(ctx, initialIds) {
   el.summary.addEventListener("click", (e) => {
     const c = e.target.closest("[data-skill]");
     if (c) toggleSkill(Number(c.dataset.skill));
+    if (e.target.closest("[data-act='jobs']")) {
+      st.open = !st.open;
+      update();
+    }
   });
   el.tabs.addEventListener("click", (e) => {
     const t = e.target.closest("[data-tab]");
@@ -64,7 +69,7 @@ export function initMatch(ctx, initialIds) {
       ensurePostings();
       obs.disconnect();
     }
-  }, { rootMargin: "600px" }).observe(document.getElementById("match"));
+  }, { rootMargin: "600px" }).observe(document.getElementById("check"));
 
   function ensurePostings() {
     if (!loading) {
@@ -93,6 +98,7 @@ export function initMatch(ctx, initialIds) {
     idxs.forEach((i) => selected.add(i));
     st.cvFound = fromCv ? new Set(idxs) : new Set();
     st.tab = "match";
+    if (fromCv) st.open = true;
     st.shown = PAGE;
     changed();
   }
@@ -101,8 +107,9 @@ export function initMatch(ctx, initialIds) {
     st.mustSkill = i;
     st.tab = "all";
     st.shown = PAGE;
+    st.open = true;
     update();
-    document.getElementById("match").scrollIntoView({ behavior: "smooth" });
+    el.panel.scrollIntoView({ behavior: "smooth", block: "start" });
     ensurePostings();
   }
 
@@ -156,19 +163,24 @@ export function initMatch(ctx, initialIds) {
   }
 
   function renderSummary(r) {
+    const toggle = (label) =>
+      `<button type="button" class="btn${st.open ? " btn-quiet" : ""}" data-act="jobs" aria-expanded="${st.open}">${st.open ? "Hide jobs" : label}</button>`;
     if (!selected.size) {
-      el.summary.innerHTML = `<p class="match-empty">Upload your CV or tick a few skills, and this shows the share of jobs you already qualify for and what to learn next.</p>`;
+      el.summary.innerHTML = `<p class="match-empty">Pick a few skills on the left and this shows how many jobs fit.</p>
+        <div class="summary-actions">${toggle(`Browse all ${fmt.int(r.pool.length)} jobs`)}</div>`;
       return;
     }
     const share = r.listed.length ? r.matched.length / r.listed.length : 0;
     el.summary.innerHTML = `
       <div class="match-big">${fmt.pct(share, 0)}</div>
-      <div class="match-text">You qualify for <strong>${fmt.int(r.matched.length)}</strong> of ${fmt.int(r.listed.length)} jobs that list skills${
-        r.near.length ? `, and are one skill away from <strong>${fmt.int(r.near.length)}</strong> more` : ""}.</div>
+      <div class="match-text">of jobs that list skills fit you: <strong>${fmt.int(r.matched.length)}</strong>${
+        r.near.length ? `, and ${fmt.int(r.near.length)} more need one extra skill` : ""}.</div>
       <div class="meter" aria-hidden="true"><div style="width:${share * 100}%"></div></div>
-      ${r.learn.length ? `<div class="learn"><span class="learn-label">Learn next:</span>${r.learn
-        .map(([s, n]) => `<button type="button" class="chip add" data-skill="${s}" title="Opens ${n} more jobs">${esc(D.skills[s].label)} <small>+${fmt.int(n)}</small></button>`)
-        .join("")}</div>` : ""}`;
+      ${r.learn.length ? `<div class="learn"><span class="learn-label">Learn next</span>${r.learn
+        .slice(0, 3)
+        .map(([sk, n]) => `<button type="button" class="chip add" data-skill="${sk}" title="Opens ${n} more jobs">${esc(D.skills[sk].label)} <small>+${fmt.int(n)}</small></button>`)
+        .join("")}</div>` : ""}
+      <div class="summary-actions">${toggle(`Show ${fmt.int(r.matched.length)} matching jobs`)}</div>`;
   }
 
   function renderTabs(r) {
@@ -185,7 +197,8 @@ export function initMatch(ctx, initialIds) {
   }
 
   function renderList() {
-    if (!last) return;
+    el.panel.hidden = !st.open;
+    if (!last || !st.open) return;
     const r = last;
     renderTabs(r);
     el.chip.innerHTML = st.mustSkill != null

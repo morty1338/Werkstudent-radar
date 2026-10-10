@@ -73,8 +73,6 @@ button { font: inherit; color: inherit; }
 .nav::-webkit-scrollbar { display: none; }
 .nav a { color: var(--ink-2); text-decoration: none; white-space: nowrap; }
 .nav a:hover { color: var(--ink); }
-.nav .nav-cta { background: var(--accent); color: #fff; padding: 6px 14px; border-radius: 999px; font-weight: 600; }
-.nav .nav-cta:hover { color: #fff; filter: brightness(1.08); }
 .filterbar { border-top: 1px solid var(--line); }
 .filter-row { display: flex; align-items: center; gap: 10px; height: 52px; overflow-x: auto; scrollbar-width: none; }
 .filter-row::-webkit-scrollbar { display: none; }
@@ -126,8 +124,6 @@ a.tile:hover { transform: translateY(-2px); border-color: var(--accent); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-map { display: grid; grid-template-columns: 5fr 6fr; gap: 16px; align-items: start; }
 .grid-skills { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: start; }
-.grid-match { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 16px; align-items: start; }
-.match-side, .match-main { display: grid; gap: 16px; min-width: 0; }
 
 /* Clickable bars */
 .bars { display: grid; gap: 4px; }
@@ -215,25 +211,26 @@ a.tile:hover { transform: translateY(-2px); border-color: var(--accent); }
 .sd-stat .l { font-size: 13px; color: var(--ink-2); }
 .sd-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 
-/* CV upload */
-.dropzone {
-  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; cursor: pointer;
-  border: 2px dashed var(--line); border-radius: 12px; padding: 22px 14px; transition: border-color .15s, background .15s;
+/* Skills check (compact) */
+.check-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 28px; align-items: start; }
+.check-actions { display: flex; align-items: center; gap: 8px; }
+.btn-small {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
 }
-.dropzone:hover, .dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
-.dropzone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.dropzone strong { font-size: 17px; }
-.dropzone span { font-size: 13px; color: var(--ink-3); }
-.cv-card .link-btn { margin-top: 6px; }
-#cv-paste textarea { width: 100%; margin: 8px 0; resize: vertical; }
+.btn-small:hover { border-color: var(--accent); }
+.btn-small input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.cv-note:empty { display: none; }
+.cv-note { font-size: 14px; color: var(--good); margin: -4px 0 10px; }
+.cv-note .link-btn { padding: 0; font-size: 14px; }
 #my-search { width: 100%; }
-#cv-result:not(:empty) { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
-.cv-title { font-weight: 650; margin-bottom: 4px; }
-.cv-sub { font-size: 14px; color: var(--ink-2); margin-bottom: 10px; }
+.summary-actions { grid-column: 1 / -1; margin-top: 6px; }
+.jobs-panel { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 18px; }
 
 /* Match summary */
-.match-summary { display: grid; grid-template-columns: auto 1fr; gap: 6px 22px; align-items: center; }
-.match-big { font-size: 56px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.match-summary { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; align-items: center; background: var(--surface-2); border-radius: 12px; padding: 18px; }
+.match-big { font-size: 48px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .match-text { font-size: 16px; color: var(--ink-2); }
 .match-text strong { color: var(--ink); }
 .meter { grid-column: 1 / -1; height: 8px; background: var(--accent-soft); border-radius: 999px; overflow: hidden; }
@@ -287,7 +284,7 @@ a.tile:hover { transform: translateY(-2px); border-color: var(--accent); }
 .site-footer { border-top: 1px solid var(--line); margin-top: 72px; padding: 24px 0 40px; color: var(--ink-3); font-size: 14px; }
 
 @media (max-width: 960px) {
-  .grid-match { grid-template-columns: 1fr; }
+  .check-grid { grid-template-columns: 1fr; }
   .skill-detail { position: static; }
 }
 @media (max-width: 860px) {

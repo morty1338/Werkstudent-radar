@@ -3,7 +3,7 @@
 // (exported to data/patterns.json), and the skills found are put into
 // "Your skills". Nothing is uploaded or stored.
 
-import { esc, fmt } from "./charts.js?v=dev";
+import { esc } from "./charts.js?v=dev";
 
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -93,27 +93,11 @@ export async function analyse(text) {
 
 export function initCv(ctx) {
   const { D } = ctx;
-  const el = {
-    drop: document.getElementById("cv-drop"),
-    file: document.getElementById("cv-file"),
-    pasteToggle: document.getElementById("cv-paste-toggle"),
-    paste: document.getElementById("cv-paste"),
-    text: document.getElementById("cv-text"),
-    analyse: document.getElementById("cv-analyse"),
-    result: document.getElementById("cv-result"),
-  };
+  const input = document.getElementById("cv-file");
+  const out = document.getElementById("cv-result");
 
-  el.file.addEventListener("change", () => el.file.files[0] && run(() => fileText(el.file.files[0]), el.file.files[0].name));
-  ["dragenter", "dragover"].forEach((t) => el.drop.addEventListener(t, (e) => { e.preventDefault(); el.drop.classList.add("over"); }));
-  ["dragleave", "drop"].forEach((t) => el.drop.addEventListener(t, () => el.drop.classList.remove("over")));
-  el.drop.addEventListener("drop", (e) => {
-    e.preventDefault();
-    const f = e.dataTransfer.files[0];
-    if (f) run(() => fileText(f), f.name);
-  });
-  el.pasteToggle.addEventListener("click", () => { el.paste.hidden = !el.paste.hidden; if (!el.paste.hidden) el.text.focus(); });
-  el.analyse.addEventListener("click", () => el.text.value.trim() && run(async () => el.text.value, "your text"));
-  el.result.addEventListener("click", (e) => {
+  input.addEventListener("change", () => input.files[0] && run(input.files[0]));
+  out.addEventListener("click", (e) => {
     const b = e.target.closest("[data-programme]");
     if (b) {
       ctx.showProgramme?.(b.dataset.programme);
@@ -121,45 +105,28 @@ export function initCv(ctx) {
     }
   });
 
-  async function run(getText, source) {
-    el.result.innerHTML = `<p class="cv-sub">Reading ${esc(source)}…</p>`;
+  async function run(file) {
+    out.textContent = `Reading ${file.name}…`;
     try {
-      const text = (await getText()).replace(/\s+/g, " ");
+      const text = (await fileText(file)).replace(/\s+/g, " ");
       if (text.trim().length < 40) {
-        el.result.innerHTML = `<p class="cv-sub">Couldn't find text in ${esc(source)}. If it's a scanned PDF, paste the text instead.</p>`;
+        out.textContent = `No text found in ${file.name}. A scanned PDF can't be read; tick your skills by hand instead.`;
         return;
       }
       const found = await analyse(text);
       const idx = found.skills.map((id) => D.skills.findIndex((s) => s.id === id)).filter((i) => i >= 0);
       if (!idx.length) {
-        el.result.innerHTML = `<p class="cv-sub">No skills from our list found in ${esc(source)}. Try adding them by hand below.</p>`;
+        out.textContent = `No skills from our list found in ${file.name}.`;
         return;
       }
-      // Strongest = the found skills employers ask for most.
-      idx.sort((a, b) => D.skills[b].jobs - D.skills[a].jobs);
       ctx.match.setSkills(idx, { fromCv: true });
-      const top = idx.slice(0, 6);
-      const total = D.jobs.length;
       const major = found.majors[0];
-      el.result.innerHTML = `
-        <p class="cv-title">${idx.length} skills found</p>
-        <p class="cv-sub">Your strongest, by how many jobs ask for them:</p>
-        <div class="bars">${top
-          .map((i) => {
-            const share = D.skills[i].jobs / total;
-            return `<div class="bar-row"><div class="bar-label">${esc(D.skills[i].label)}</div>
-              <div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, (share / (D.skills[top[0]].jobs / total)) * 100)}%"></div></div>
-              <span class="bar-value">${fmt.pct(share, share < 0.1 ? 1 : 0)}</span></div></div>`;
-          })
-          .join("")}</div>
-        ${idx.length > top.length ? `<p class="cv-sub" style="margin-top:10px">Also: ${idx.slice(top.length).map((i) => esc(D.skills[i].label)).join(", ")}</p>` : ""}
-        ${major ? `<p class="cv-sub">Study programme: <button type="button" class="link-btn" data-programme="${esc(major.id)}">${esc(major.label)} →</button></p>` : ""}
-        <p class="cv-sub">They're now in “Your skills”. Your matching jobs are on the right.</p>`;
-      document.getElementById("match-summary").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      out.innerHTML = `✓ ${idx.length} skills found in your CV and ticked below${
+        major ? ` · degree: <button type="button" class="link-btn" data-programme="${esc(major.id)}">${esc(major.label)}</button>` : ""}`;
     } catch (err) {
-      el.result.innerHTML = `<p class="cv-sub">Couldn't read ${esc(source)}: ${esc(err.message)}.</p>`;
+      out.textContent = `Couldn't read ${file.name}: ${err.message}.`;
     } finally {
-      el.file.value = "";
+      input.value = "";
     }
   }
 }
