@@ -421,6 +421,7 @@ a.tile:hover { transform: translateY(-2px); border-color: var(--accent); }
   .sheet-backdrop { display: block; position: fixed; inset: 0; z-index: 35; background: var(--scrim); }
 
   .header-row { gap: 14px; justify-content: space-between; }
+  .status { letter-spacing: .04em; }
   .lang-switch button { min-height: 36px; min-width: 42px; }
   .tile { min-height: 112px; padding: 14px; }
   .tile .value { font-size: 30px; }
