@@ -163,6 +163,7 @@ async function main() {
     fReset.hidden = state.field < 0 && state.city < 0 && !state.noGerman;
     document.getElementById("f-count").textContent = `${fmt.int(all.length)} jobs`;
     document.getElementById("f-done").textContent = `Show ${fmt.int(all.length)} jobs`;
+    renderSubscribe();
     const chips = [
       state.field >= 0 && ["field", catLabel(state.field)],
       state.city >= 0 && ["city", D.cities[state.city].name],
@@ -172,6 +173,30 @@ async function main() {
       .map(([k, label]) => `<button type="button" class="filter-pill" data-clear="${k}" aria-label="Remove filter: ${esc(label)}">${esc(label)} <span aria-hidden="true">✕</span></button>`)
       .join("");
   }
+
+  // RSS feeds of new postings: all fields, plus the selected field's own feed.
+  function renderSubscribe() {
+    const field = state.field >= 0 ? D.categories[state.field] : null;
+    const list = [["all", "All new Werkstudent jobs"], ...(field ? [[field, `New jobs in ${catLabel(state.field)}`]] : [])];
+    document.getElementById("subscribe").innerHTML = `
+      <p>RSS feeds of postings that are new on the market, updated every morning. Paste a link into a feed reader
+        (Feedly, Inoreader, NetNewsWire…); each item links to the original posting.</p>
+      ${list.map(([id, label]) => `<div class="feed-row"><a href="feeds/${id}.xml">${esc(label)}</a>
+        <button type="button" class="link-btn" data-copy="feeds/${id}.xml">Copy link</button></div>`).join("")}
+      ${field ? "" : `<p class="hint">Pick a field in the filters to get a feed for just that field.</p>`}`;
+  }
+  document.getElementById("subscribe").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-copy]");
+    if (!b) return;
+    const url = new URL(b.dataset.copy, location.href).href;
+    try {
+      await navigator.clipboard.writeText(url);
+      b.textContent = "Copied ✓";
+    } catch {
+      b.textContent = url; // no clipboard access: show the address to copy by hand
+    }
+    setTimeout(() => { b.textContent = "Copy link"; }, 2500);
+  });
 
   // Clicks and Enter/Space on any data-key row inside a container.
   function onPick(el, fn) {

@@ -12,6 +12,7 @@ runs the queries in sql/*.sql and writes:
     docs/data/history.json   daily time series for the trend charts
     docs/data/lifetimes.json how long postings stay online (Kaplan–Meier), overall and by field
     docs/data/cooccurrence.json  skills asked for together, with lift
+    docs/feeds/*.xml         RSS feeds of new postings, all and per field (see feeds.py)
     docs/data/og.png         social preview image with today's headline numbers
     docs/data/patterns.json  skill and study-programme rules for analysing a CV in the browser
     data/history.csv         today's snapshot appended (one row per metric and day)
@@ -27,7 +28,7 @@ import sqlite3
 from collections import defaultdict
 from datetime import date, datetime, timezone
 
-from . import og_image, patterns, stats
+from . import feeds, og_image, patterns, stats
 from .extract import CATEGORIES, MAJORS
 from .skills import SKILLS
 
@@ -489,6 +490,10 @@ def main():
     for name, data in outputs:
         path = write_json(name, data)
         print(f"wrote {os.path.relpath(path, ROOT)} ({os.path.getsize(path) / 1024:.0f} KB)")
+
+    labels = {r["id"]: r["label"] for r in db.execute("SELECT id, label FROM categories ORDER BY id")}
+    counts = feeds.write_feeds(db, labels)
+    print(f"wrote {len(counts)} RSS feeds to {os.path.relpath(feeds.FEED_DIR, ROOT)} ({counts['all']} new postings in all.xml)")
 
     path = og_image.render(summary, os.path.join(OUT_DIR, "og.png"))
     print(f"wrote {os.path.relpath(path, ROOT)} ({os.path.getsize(path) / 1024:.0f} KB)")

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Werkstudent Radar: new Werkstudent jobs in Other</title>
+    <link>https://morty1338.github.io/werkstudent-radar/</link>
+    <atom:link href="https://morty1338.github.io/werkstudent-radar/feeds/other.xml" rel="self" type="application/rss+xml"/>
+    <description>New Werkstudent postings in Germany from the Bundesagentur für Arbeit and company career sites, collected daily by Werkstudent Radar. Links lead to the original postings.</description>
+    <language>en</language>
+    <lastBuildDate>Sat, 10 Oct 2026 12:27:37 +0000</lastBuildDate>
+    <ttl>720</ttl>
+    <item>
+      <title>Werkstudent (w/m/d) Intelligence &amp; Foresight</title>
+      <link>https://www.arbeitsagentur.de/jobsuche/jobdetail/20468-44494222-109-S</link>
+      <guid isPermaLink="false">20468-44494222-109-S</guid>
+      <pubDate>Sat, 10 Oct 2026 06:30:00 +0200</pubDate>
+      <category>Other</category>
+      <description>SSI SCHÄFER Automation GmbH · Giebelstadt · €16.00/h · Other</description>
+    </item>
+  </channel>
+</rss>

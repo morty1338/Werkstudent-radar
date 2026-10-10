@@ -20,6 +20,8 @@
   <link rel="icon" href="favicon.svg?v=dev" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=dev">
   <link rel="manifest" href="manifest.json?v=dev">
+  <!-- Feed URLs stay fixed (no ?v=dev): feed readers keep the address they subscribed to. -->
+  <link rel="alternate" type="application/rss+xml" title="Werkstudent Radar: new Werkstudent jobs" href="feeds/all.xml">
   <link rel="stylesheet" href="assets/style.css?v=dev">
   <script type="module" src="assets/app.js?v=dev"></script>
 </head>
@@ -149,6 +151,10 @@
       <p class="step">06</p>
       <h2>Check your skills</h2>
       <p class="insight">Tick what you can do, or let your CV fill it in, to see the share of these jobs you qualify for.</p>
+      <details class="subscribe">
+        <summary>Subscribe to new jobs</summary>
+        <div class="subscribe-body" id="subscribe" aria-live="polite"></div>
+      </details>
       <div class="card check-card">
         <div class="check-grid">
           <div>

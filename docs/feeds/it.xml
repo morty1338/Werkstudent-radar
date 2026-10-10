@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Werkstudent Radar: new Werkstudent jobs in IT &amp; Software</title>
+    <link>https://morty1338.github.io/werkstudent-radar/</link>
+    <atom:link href="https://morty1338.github.io/werkstudent-radar/feeds/it.xml" rel="self" type="application/rss+xml"/>
+    <description>New Werkstudent postings in Germany from the Bundesagentur für Arbeit and company career sites, collected daily by Werkstudent Radar. Links lead to the original postings.</description>
+    <language>en</language>
+    <lastBuildDate>Sat, 10 Oct 2026 12:27:37 +0000</lastBuildDate>
+    <ttl>720</ttl>
+  </channel>
+</rss>

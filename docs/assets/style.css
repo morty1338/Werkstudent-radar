@@ -251,6 +251,16 @@ a.tile:hover { transform: translateY(-2px); border-color: var(--accent); }
 #my-search { width: 100%; }
 .summary-actions { grid-column: 1 / -1; margin-top: 6px; }
 .jobs-panel { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 18px; }
+.subscribe { margin: -8px 0 18px; font-size: 14px; }
+.subscribe summary { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--accent-ink); list-style: none; min-height: 36px; }
+.subscribe summary::-webkit-details-marker { display: none; }
+.subscribe summary::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.subscribe-body { max-width: 620px; margin-top: 8px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; color: var(--ink-2); }
+.subscribe-body p { margin: 0 0 10px; }
+.feed-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); }
+.feed-row a { color: var(--ink); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.feed-row a:hover { color: var(--accent-ink); }
+.subscribe .hint { margin: 8px 0 0; font-size: 13px; color: var(--ink-3); }
 
 /* Match summary */
 .match-summary { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; align-items: center; background: var(--surface-2); border-radius: 12px; padding: 18px; }
