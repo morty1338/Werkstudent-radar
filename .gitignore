@@ -19,3 +19,6 @@ _drafts/
 
 # Local tool config
 .claude/
+
+# Built from data/jobs.csv and data/history/*.csv by radar.history
+data/history.sqlite
