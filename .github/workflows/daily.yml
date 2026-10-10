@@ -89,6 +89,11 @@ jobs:
       - name: Update posting history
         run: python -m radar.history 2>&1 | tee -a "$LOG"
 
+      # Posting volume vs. the last 7 days, API fields, pay range. A failed
+      # check stops the run before anything is committed (and opens the issue).
+      - name: Check data quality
+        run: python -m radar.checks 2>&1 | tee -a "$LOG"
+
       - name: Build aggregates
         run: python -m radar.build 2>&1 | tee -a "$LOG"
 
@@ -129,7 +134,8 @@ jobs:
               '```',
               '',
               'Common causes: the Bundesagentur API changed (new version, 403 on an old path), ',
-              'it was temporarily down, or far fewer postings came back than usual.',
+              'it was temporarily down, or a data check failed (posting count far from the ',
+              '7-day median, API fields missing, pay out of range; see the run summary).',
             ].join('\n');
 
             const { data: open } = await github.rest.issues.listForRepo({
