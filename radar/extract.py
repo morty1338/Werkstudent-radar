@@ -363,7 +363,8 @@ def normalise_city(ort):
 
 # --- Werkstudent filter ---------------------------------------------------------
 
-_WS = re.compile(r"werkstud|working[- ]student|work student|werk-student", _FLAGS)
+# Tolerates the common typos "Werksstudent" and "Werkstundent".
+_WS = re.compile(r"werk-?s{1,2}tud|werkstund|working[- ]student|work student", _FLAGS)
 
 
 def is_werkstudent(title):

@@ -164,6 +164,9 @@ def test_is_werkstudent():
     assert is_werkstudent("Werkstudent:in Marketing (m/w/d)")
     assert is_werkstudent("Working Student Finance")
     assert not is_werkstudent("Büroaushilfe (m/w/d)")
+    assert is_werkstudent("Werksstudent Consulting Finance (m/w/d)")
+    assert is_werkstudent("Werkstundent:in Marketing")
+    assert not is_werkstudent("Werkstatt-Mitarbeiter (m/w/d)")
 
 
 def test_normalise_city():
