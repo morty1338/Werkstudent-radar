@@ -23,15 +23,15 @@ Rules for every phase:
 
 ## Phase 1 — Data engineering: history
 
-- [ ] SQLite history database `data/history.sqlite` (built from committed CSVs, see
+- [x] SQLite history database `data/history.sqlite` (built from committed CSVs, see
       Decisions): `postings` keyed by refnr (first_seen, last_seen, field, city,
       lat/lon, pay, German requirement, skills) plus `scans` (one row per collection
       day and source) and `online` (intervals of consecutive scans a posting was
       seen in). Daily run upserts; postings missing today keep their last_seen.
-- [ ] Backfill from what exists: scans from `history.csv`/`history.json`, intervals
+- [x] Backfill from what exists: scans from `history.csv`/`history.json`, intervals
       from `jobs.csv` first_seen/last_seen.
-- [ ] New aggregate file for the site (daily postings online / new / gone), no raw texts.
-- [ ] Daily workflow runs the history step and commits `data/history/`.
+- [x] New aggregate file for the site (daily postings online / new / gone), no raw texts.
+- [x] Daily workflow runs the history step and commits `data/history/`.
 
 ## Phase 2 — Quality: tests + data checks
 

@@ -46,7 +46,8 @@ python3 -m venv .venv
 .venv/bin/python -m radar.collect   # 1. raw search results (~30 s)
 .venv/bin/python -m radar.arbeitnow # 1b. company career sites (a few minutes, paced)
 .venv/bin/python -m radar.enrich    # 2. job texts -> features in data/jobs.csv (~2 min on the first run)
-.venv/bin/python -m radar.build     # 3. SQL aggregates -> docs/data/*.json + data/history.csv
+.venv/bin/python -m radar.history   # 3. today's scan -> data/history/*.csv, data/history.sqlite
+.venv/bin/python -m radar.build     # 4. SQL aggregates -> docs/data/*.json + data/history.csv
 ```
 
 `collect` pages through the job search API for all Werkstudent postings in Germany
@@ -131,6 +132,37 @@ Outputs:
 | `docs/data/og.png` | link preview image with today's numbers (shown by Telegram, WhatsApp, LinkedIn; also at the top of this README) |
 | `data/history.csv` | one row per day × metric (`total`, `category`, `city`, `skill`, `major`, `german`). Which postings were online on a given day can't be reconstructed later, so this is collected from day one. |
 
+## Posting history (`radar/history.py`)
+
+`data/jobs.csv` keeps every posting ever seen with its `first_seen` and
+`last_seen`. The history step adds *when* each posting was online, so gaps,
+inflow and outflow can be analysed later. It keeps two small text tables in
+`data/history/` (committed) and rebuilds a SQLite database from them:
+
+| File | Content |
+|------|---------|
+| `data/history/scans.csv` | one row per collection day and source: postings online |
+| `data/history/online.csv` | stretches of consecutive scans a posting was online in (`refnr, start_date, end_date`); `end_date` stays empty while it is online, so a row only changes when a posting appears or disappears |
+| `data/history.sqlite` | `scans`, `online`, `postings` (field, city, coordinates, pay, German requirement, first/last seen; no texts), `posting_skills` and a `lifetimes` view. Git-ignored: `python -m radar.history` rebuilds it in a few seconds |
+| `docs/data/timeline.json` | per day: postings online, new, back after a gap, gone; online per source |
+
+Why not commit the SQLite file itself: every day thousands of `last_seen`
+values change, which touches most pages of the database file, and git would
+store a new multi-megabyte copy each day. The text tables change by a few
+hundred lines a day.
+
+A posting missing from a scan ends its stretch at the scan before; if it comes
+back it starts a new one. A day without a scan (a skipped run) isn't a gap.
+History before this step existed was backfilled from `jobs.csv` (one stretch
+from `first_seen` to `last_seen` per posting) and checked against the daily
+totals in `data/history.csv`.
+
+```sql
+-- e.g. in sqlite3 data/history.sqlite
+SELECT field, COUNT(*) AS gone, AVG(days_seen) AS avg_days
+FROM lifetimes WHERE NOT still_online GROUP BY field ORDER BY gone DESC;
+```
+
 ## Automation
 
 [`daily.yml`](.github/workflows/daily.yml) runs every morning (04:23 UTC) and
@@ -138,11 +170,11 @@ can be started by hand from the Actions tab. GitHub doesn't guarantee scheduled
 runs, so a catch-up run at 16:23 UTC does the work only if the morning one
 didn't happen (it checks `data/history.csv` for today's date):
 
-1. `collect` → `arbeitnow` → `enrich` → `build`. Only new postings need their
+1. `collect` → `arbeitnow` → `enrich` → `history` → `build`. Only new postings need their
    text, so a normal day takes a few minutes. If the Arbeitnow step fails, the
    day goes on with the Bundesagentur's data and recently seen career-site
    postings are kept.
-2. Commits `data/jobs.csv`, `data/history.csv` and `docs/data/` as
+2. Commits `data/jobs.csv`, `data/history.csv`, `data/history/` and `docs/data/` as
    `github-actions[bot]` ("Update data for YYYY-MM-DD").
 3. If any step fails, opens an issue "Daily data update failed" with the last
    40 log lines and a link to the run (GitHub notifies by e-mail). Further
@@ -219,6 +251,7 @@ radar/arbeitnow.py second source: company career sites via the Arbeitnow API
 radar/enrich.py    fetch texts for new postings, extract features -> data/jobs.csv
 radar/extract.py   feature extraction rules
 radar/skills.py    skill dictionary (German + English synonyms)
+radar/history.py   online stretches per posting -> data/history/, history.sqlite, timeline.json
 radar/build.py     load jobs.csv into SQLite, run radar/sql/*.sql, write JSON
 radar/og_image.py  link preview image with today's numbers
 radar/patterns.py  skill rules exported for the browser (CV analysis)
@@ -228,6 +261,7 @@ eval/label.html    blind labelling form
 tests/             rule tests on made-up snippets, SQL tests on a tiny fixture
 data/jobs.csv      extracted features (committed)
 data/history.csv   daily metric snapshots (committed)
+data/history/      scans and online stretches per posting (committed; source of history.sqlite)
 data/eval/         evaluation labels and reports (job texts stay local)
 docs/              the website: index.html, assets/app.js (filters, charts),
                    match.js (skills check and job list), cv.js (CV reading), charts.js
