@@ -1,4 +1,4 @@
-import { barList, bubbleMap, dotRange, esc, fmt, histogram, initTooltip, lineChart } from "./charts.js?v=dev";
+import { barList, bubbleMap, dotRange, esc, fmt, histogram, initTooltip, lineChart, rollDigits } from "./charts.js?v=dev";
 import { initCv } from "./cv.js?v=dev";
 import { initMatch } from "./match.js?v=dev";
 
@@ -177,12 +177,18 @@ async function main() {
       { href: "#skills", label: "Most asked-for skill", value: top ? top.label : "—", sub: top ? `in ${fmt.pct(top.share, 0)} of jobs` : "", small: true },
       { href: "#where", label: "Most jobs in", value: bigCity >= 0 ? D.cities[bigCity].name : "—", sub: bigCity >= 0 ? `${fmt.int(bigCount)} jobs` : "", small: true },
     ];
-    document.getElementById("tiles").innerHTML = tiles
+    const box = document.getElementById("tiles");
+    const before = [...box.querySelectorAll(".value")].map((v) => v.dataset.value);
+    box.innerHTML = tiles
       .map((t) => `<a class="tile${t.cta ? " cta" : ""}" href="${t.href}">
         <span class="label">${esc(t.label)}</span>
-        <span class="value"${t.small ? ' style="font-size:30px"' : ""}>${esc(t.value)}</span>
+        <span class="value" data-value="${esc(t.value)}"${t.small ? ' style="font-size:30px"' : ""}>${esc(t.value)}</span>
         <span class="sub">${esc(t.sub)}</span></a>`)
       .join("");
+    // Roll only the numbers that changed (all of them on first load).
+    box.querySelectorAll(".value").forEach((v, k) => {
+      if (v.dataset.value !== before[k]) rollDigits(v, before[k]);
+    });
   }
 
   // --- 01 Where ---------------------------------------------------------------------------
@@ -510,7 +516,13 @@ async function main() {
   }
   const src = S.totals.by_source || {};
   document.querySelector(".lede").textContent =
-    `Every Werkstudent posting on the Bundesagentur für Arbeit job board${src.arbeitnow ? `, plus ${fmt.int(src.arbeitnow)} from company career sites` : ""}. Updated each morning, last on ${fmt.date(D.as_of)}.`;
+    `Every Werkstudent posting on the Bundesagentur für Arbeit job board${src.arbeitnow ? `, plus ${fmt.int(src.arbeitnow)} from company career sites` : ""}.`;
+  const scanned = S.generated_at
+    ? new Date(S.generated_at).toLocaleString("en-GB", { timeZone: "Europe/Berlin", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).replace(",", "")
+    : fmt.date(D.as_of);
+  const status = document.getElementById("status");
+  status.classList.toggle("is-stale", ageDays > 2);
+  status.innerHTML = `<span class="status-dot" aria-hidden="true">●</span> ${ageDays > 2 ? "STALE" : "LIVE"} · LAST SCAN <time datetime="${esc(S.generated_at || D.as_of)}">${esc(scanned)}</time>`;
 
   // Sections get their height only now, so jump to #anchor again.
   const target = location.hash && document.getElementById(location.hash.slice(1));

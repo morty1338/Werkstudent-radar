@@ -53,6 +53,44 @@ export function hideTooltip() {
   if (tooltip) tooltip.hidden = true;
 }
 
+// --- Rolling digits ---------------------------------------------------------------
+// Spins each digit of el's text up from the digit shown before (or from 0), like
+// a counter. Other characters stay put. Skipped under prefers-reduced-motion.
+
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+
+export function rollDigits(el, from = "") {
+  const to = el.textContent;
+  if (reducedMotion.matches || !/\d/.test(to)) return;
+  const toDigits = to.replace(/\D/g, "");
+  const fromDigits = (from || "").replace(/\D/g, "");
+  let k = 0;
+  let longest = 0;
+  const cells = [...to].map((ch) => {
+    if (!/\d/.test(ch)) return `<span class="roll">${esc(ch)}</span>`;
+    // Line digits up from the right: units with units, tens with tens.
+    const prev = fromDigits[fromDigits.length - toDigits.length + k];
+    const d = Number(ch);
+    const start = prev == null ? 0 : Number(prev);
+    const steps = ((d - start + 10) % 10) + (prev == null ? 10 : 0);
+    const ms = steps ? 500 + 70 * k : 0;
+    k += 1;
+    longest = Math.max(longest, ms);
+    if (!steps) return `<span class="roll">${ch}</span>`;
+    const strip = Array.from({ length: steps + 1 }, (_, i) => `<span>${(start + i) % 10}</span>`).join("");
+    return `<span class="roll"><span class="roll-strip" style="--steps:${steps};--ms:${ms}ms">${strip}</span></span>`;
+  });
+  if (!longest) return;
+  el.setAttribute("aria-label", to);
+  el.innerHTML = `<span aria-hidden="true">${cells.join("")}</span>`;
+  setTimeout(() => {
+    if (el.isConnected && el.getAttribute("aria-label") === to) {
+      el.textContent = to;
+      el.removeAttribute("aria-label");
+    }
+  }, longest + 100);
+}
+
 // --- Horizontal bars -------------------------------------------------------------
 // rows: [{ key, label, sub?, value, text, tip?, muted?, selected? }]
 // Rows with a key are buttons: the page handles clicks via data-key.

@@ -79,7 +79,12 @@ select, input[type="search"], textarea {
 .btn-quiet { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); margin-top: 12px; }
 
 /* Hero */
-.hero { padding-top: 44px; }
+.hero { padding-top: 36px; }
+.status { font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 18px; min-height: 18px; }
+.status time { color: var(--accent-ink); }
+.status-dot { color: var(--good); animation: blink 2.4s ease-in-out infinite; }
+.status.is-stale .status-dot { color: var(--warn-ink); animation: none; }
+@keyframes blink { 50% { opacity: .25; } }
 .lede { font-size: 19px; color: var(--ink-2); margin-top: 14px; max-width: 680px; }
 .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 28px; }
 .tile {
@@ -91,6 +96,11 @@ a.tile:hover { transform: translateY(-2px); border-color: var(--accent); }
 .tile .label { font-size: 14px; color: var(--ink-2); }
 .tile .value { font-family: var(--mono); font-size: 36px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; overflow-wrap: anywhere; }
 .tile .sub { font-size: 14px; color: var(--ink-3); margin-top: auto; }
+/* Rolling digits (rollDigits in charts.js): each character in a one-line window. */
+.roll { display: inline-block; height: 1.1em; overflow: hidden; vertical-align: top; white-space: pre; }
+.roll-strip { display: flex; flex-direction: column; animation: roll var(--ms) cubic-bezier(.25, .8, .25, 1) forwards; }
+.roll-strip span { height: 1.1em; }
+@keyframes roll { to { transform: translateY(calc(var(--steps) * -1.1em)); } }
 .tile.cta { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .tile.cta .label, .tile.cta .sub { color: color-mix(in srgb, var(--on-accent) 80%, transparent); }
 .skeleton { background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 50%, var(--surface) 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
@@ -99,7 +109,12 @@ a.tile:hover { transform: translateY(-2px); border-color: var(--accent); }
 
 /* Sections */
 .section { padding-top: 72px; }
-.step { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent-ink); letter-spacing: .08em; margin-bottom: 6px; }
+/* Section numbers as split-flap tiles: a dark cell with a hairline across the middle. */
+.step {
+  display: inline-block; font-family: var(--mono); font-size: 15px; font-weight: 700; line-height: 1; letter-spacing: .14em;
+  color: var(--accent); padding: 6px 5px 6px 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid var(--surface-3);
+  background: linear-gradient(to bottom, var(--surface-2) calc(50% - .5px), var(--bg) calc(50% - .5px) calc(50% + .5px), var(--surface) calc(50% + .5px));
+}
 .insight { font-size: 19px; color: var(--ink-2); margin: 10px 0 22px; max-width: 820px; }
 .insight strong { color: var(--ink); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); min-width: 0; }
