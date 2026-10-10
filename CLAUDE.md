@@ -24,8 +24,13 @@ colors outside `:root`. Breakpoints: 960, 860, 560 px.
 **Charts:** hand-written, no chart library. Bars, histogram and dot-range rows
 are HTML divs; the place map and line charts are inline SVG. The map is an
 equirectangular projection squashed by cos(51.2°) with fixed Germany bounds;
-bubble radius ∝ √jobs; places without coordinates are skipped. One shared
-`#tooltip` shows the HTML in any element's `data-tip` (escape with `esc()`).
+the country outline (`DE_OUTLINE`, Natural Earth 1:50m, inline in `charts.js`)
+uses the same projection. Bubble radius ∝ √jobs (max 19.5 units); places without
+coordinates are skipped. A radar sweep (SMIL `animateTransform`, clipped to the
+outline) is hidden under `prefers-reduced-motion`. One shared `#tooltip` shows
+the HTML in any element's `data-tip` (escape with `esc()`): hover with a mouse,
+tap on touch (stays until a swipe or a tap elsewhere). Inside `[data-near]` (the
+map) a tap within 22 px of a small bubble picks the nearest one.
 
 **State and navigation:** `state` in `app.js` (`field`, `city`, `noGerman`,
 `payBy`, `skillGroup`, `skill`); selected skills live in `match.js`.

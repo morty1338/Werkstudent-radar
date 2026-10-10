@@ -212,7 +212,7 @@ async function main() {
         value: perCity.get(i) || 0,
         selected: state.city === i,
         label: labelled.has(i),
-        tip: `<strong>${esc(c.name)}</strong><br>${fmt.int(perCity.get(i) || 0)} jobs`,
+        tip: `<strong>${esc(c.name)}</strong><br>${fmt.int(perCity.get(i) || 0)} ${perCity.get(i) === 1 ? "job" : "jobs"}`,
       })),
     );
 

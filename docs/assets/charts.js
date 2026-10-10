@@ -18,22 +18,58 @@ export function esc(s) {
 }
 
 // --- Tooltip -------------------------------------------------------------------
-// Any element with data-tip="<html>" shows a tooltip on hover (or tap on touch).
+// Any element with data-tip="<html>" shows a tooltip on hover, or on tap on touch
+// screens, where it stays until the next tap elsewhere or a swipe. Inside an
+// element with data-near (the map), a tap also finds a small mark next to the finger.
 
 let tooltip;
+let lastPointer = "mouse";
+const NEAR_PX = 22;
+
+// The [data-tip] mark under the pointer, or for touch the nearest one inside data-near.
+function tipTarget(e) {
+  const hit = e.target.closest?.("[data-tip]");
+  if (hit || lastPointer === "mouse") return hit;
+  const box = e.target.closest?.("[data-near]");
+  if (!box) return null;
+  let best = null;
+  let bestDist = NEAR_PX;
+  for (const m of box.querySelectorAll("[data-tip]")) {
+    const r = m.getBoundingClientRect();
+    const d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) - r.width / 2;
+    if (d < bestDist) [best, bestDist] = [m, d];
+  }
+  return best;
+}
 
 export function initTooltip() {
   tooltip = document.getElementById("tooltip");
   document.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse") return;
     const t = e.target.closest?.("[data-tip]");
     if (t) showTooltip(t.dataset.tip, e.clientX, e.clientY);
     else if (!e.target.closest?.("svg[data-hover]")) hideTooltip();
   });
   document.addEventListener("pointerdown", (e) => {
-    const t = e.target.closest?.("[data-tip]");
-    if (t && e.pointerType !== "mouse") showTooltip(t.dataset.tip, e.clientX, e.clientY);
+    lastPointer = e.pointerType;
+    if (e.pointerType === "mouse") return;
+    const t = tipTarget(e);
+    if (t) showTooltip(t.dataset.tip, e.clientX, e.clientY);
+    else if (!e.target.closest?.("svg[data-hover]")) hideTooltip();
   });
-  document.addEventListener("scroll", hideTooltip, { passive: true });
+  // A tap that filters the page can shift the layout and fire "scroll" on its own,
+  // so on touch screens only a swipe hides the tooltip.
+  document.addEventListener("scroll", () => lastPointer === "mouse" && hideTooltip(), { passive: true });
+  document.addEventListener("touchmove", hideTooltip, { passive: true });
+}
+
+// A tap just next to a small mark inside data-near clicks that mark.
+function clickNearest(el) {
+  el.addEventListener("click", (e) => {
+    if (lastPointer === "mouse" || e.target.closest("[data-key]")) return;
+    const t = tipTarget(e);
+    if (t?.dataset.key != null) t.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: e.clientX, clientY: e.clientY }));
+  });
 }
 
 export function showTooltip(html, x, y) {
@@ -177,11 +213,22 @@ export function dotRange(el, rows, { min, max, ticks, empty = "Not enough pay da
 }
 
 // --- Bubble map of Germany ----------------------------------------------------------
-// The country's outline emerges from the postings themselves: one bubble per place.
+// One bubble per place on a faint outline of the country, with a slow radar sweep.
 // points: [{ key, name, lat, lon, value, tip, selected, label }]
 
 const GEO = { lonMin: 5.7, lonMax: 15.2, latMin: 47.2, latMax: 55.1 };
 const KX = Math.cos((51.2 * Math.PI) / 180); // squash longitude at Germany's mid-latitude
+const CENTRE = { lon: 10.45, lat: 51.16 }; // geographic centre of Germany, origin of the sweep
+
+// Germany as [lon, lat] rings: the mainland and the larger islands. Natural Earth
+// 1:50m (public domain, via world-atlas 2.0.2), simplified to about 3 km.
+const DE_OUTLINE = [
+  [[9.52,47.52],[9.18,47.67],[8.88,47.66],[8.57,47.78],[8.4,47.69],[8.56,47.62],[8.43,47.59],[7.93,47.56],[7.57,47.61],[7.62,48.16],[7.84,48.64],[8.14,48.89],[8.13,48.97],[7.61,49.06],[7.45,49.15],[7.04,49.11],[7.0,49.18],[6.89,49.21],[6.73,49.16],[6.54,49.4],[6.35,49.45],[6.49,49.8],[6.26,49.87],[6.11,50.09],[6.18,50.23],[6.36,50.32],[6.34,50.45],[6.18,50.52],[6.24,50.6],[5.99,50.75],[6.05,50.91],[5.86,51.03],[6.13,51.15],[6.08,51.22],[6.19,51.41],[5.95,51.8],[6.17,51.88],[6.36,51.82],[6.74,51.91],[6.8,51.98],[6.72,52.08],[7.02,52.27],[7.0,52.42],[6.75,52.46],[6.69,52.53],[6.75,52.63],[7.01,52.63],[7.18,52.97],[7.2,53.28],[7.05,53.38],[7.21,53.66],[8.01,53.69],[8.17,53.54],[8.11,53.47],[8.25,53.45],[8.33,53.61],[8.49,53.51],[8.49,53.39],[8.53,53.78],[8.62,53.88],[8.9,53.84],[9.21,53.86],[9.59,53.6],[9.78,53.55],[9.63,53.6],[9.31,53.86],[8.98,53.93],[8.9,54.0],[8.91,54.26],[8.78,54.31],[8.65,54.29],[8.65,54.4],[8.95,54.47],[8.96,54.54],[8.68,54.79],[8.67,54.9],[8.9,54.9],[9.25,54.81],[9.62,54.85],[9.89,54.78],[10.02,54.67],[10.03,54.58],[9.87,54.47],[10.14,54.49],[10.21,54.41],[10.36,54.44],[10.73,54.32],[11.01,54.38],[11.06,54.28],[11.01,54.18],[10.81,54.08],[10.92,54.0],[11.1,54.01],[11.4,53.95],[11.8,54.14],[12.11,54.17],[12.58,54.47],[13.03,54.41],[13.15,54.28],[13.45,54.14],[13.73,54.15],[13.87,53.85],[14.02,53.77],[14.26,53.73],[14.41,53.22],[14.13,52.88],[14.62,52.53],[14.55,52.36],[14.75,52.08],[14.6,51.83],[14.74,51.63],[14.73,51.52],[14.91,51.46],[15.02,51.25],[14.77,50.82],[14.61,50.86],[14.55,50.99],[14.32,51.04],[14.25,51.0],[14.37,50.9],[13.56,50.7],[13.44,50.6],[13.38,50.62],[13.18,50.51],[13.02,50.49],[12.94,50.41],[12.76,50.43],[12.55,50.39],[12.28,50.18],[12.09,50.3],[12.21,50.1],[12.51,49.9],[12.39,49.74],[12.68,49.41],[12.81,49.33],[12.92,49.33],[13.4,48.98],[13.55,48.96],[13.82,48.77],[13.73,48.54],[13.49,48.58],[13.38,48.36],[12.9,48.2],[12.76,48.11],[12.95,47.89],[12.9,47.72],[13.06,47.66],[13.02,47.48],[12.81,47.54],[12.77,47.64],[12.68,47.67],[12.48,47.64],[12.21,47.72],[12.18,47.62],[11.72,47.58],[11.3,47.42],[11.04,47.39],[10.87,47.52],[10.44,47.55],[10.37,47.37],[10.18,47.28],[10.2,47.36],[10.07,47.39],[9.97,47.5],[9.75,47.58]],
+  [[13.71,54.38],[13.71,54.28],[13.48,54.34],[13.42,54.25],[13.19,54.33],[13.18,54.54],[13.34,54.7],[13.42,54.7],[13.49,54.62],[13.66,54.56],[13.58,54.46]],
+  [[14.21,53.95],[14.21,53.87],[13.93,53.88],[13.83,54.13]],
+  [[8.31,54.79],[8.3,54.91],[8.45,55.05],[8.38,54.9],[8.63,54.89],[8.35,54.85]],
+  [[11.28,54.42],[11.13,54.42],[11.01,54.47],[11.04,54.52],[11.23,54.5]],
+];
 
 export function bubbleMap(el, points) {
   const W = 420;
@@ -189,11 +236,38 @@ export function bubbleMap(el, points) {
   const px = (lon) => ((lon - GEO.lonMin) / (GEO.lonMax - GEO.lonMin)) * W;
   const py = (lat) => ((GEO.latMax - lat) / (GEO.latMax - GEO.latMin)) * H;
   const max = Math.max(...points.map((p) => p.value), 1);
-  const r = (v) => 2 + Math.sqrt(v / max) * 26;
+  const r = (v) => 1.5 + Math.sqrt(v / max) * 18;
   const anySelected = points.some((p) => p.selected);
   // Big bubbles first so small ones stay on top and hoverable.
   const sorted = [...points].filter((p) => p.lat != null && p.value > 0).sort((a, b) => b.value - a.value);
+
+  const land = DE_OUTLINE.map((ring) => `M${ring.map(([lon, lat]) => `${px(lon).toFixed(1)},${py(lat).toFixed(1)}`).join("L")}Z`).join("");
+  const cx = px(CENTRE.lon);
+  const cy = py(CENTRE.lat);
+  const reach = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy));
+  // The sweep: a fan of thin wedges that brighten towards the leading edge.
+  const SLICES = 12;
+  const SPAN = 42; // degrees
+  const at = (deg) => `${(cx + reach * Math.sin((deg * Math.PI) / 180)).toFixed(1)},${(cy - reach * Math.cos((deg * Math.PI) / 180)).toFixed(1)}`;
+  const fan = Array.from({ length: SLICES }, (_, i) => {
+    const a0 = -SPAN + (SPAN / SLICES) * i;
+    const a1 = a0 + SPAN / SLICES + 0.3;
+    return `<path d="M${cx.toFixed(1)},${cy.toFixed(1)}L${at(a0)}A${reach.toFixed(1)},${reach.toFixed(1)} 0 0 1 ${at(a1)}Z" fill-opacity="${(((i + 1) / SLICES) * 0.16).toFixed(3)}"/>`;
+  }).join("");
+
+  if (!el.dataset.near) {
+    el.dataset.near = "";
+    clickNearest(el);
+  }
   el.innerHTML = `<svg class="map" viewBox="-30 -10 ${W + 60} ${H + 20}" role="img" aria-label="Map of Werkstudent postings by place">
+    <defs><clipPath id="map-land"><path d="${land}"/></clipPath></defs>
+    <path class="map-land" d="${land}"/>
+    <g class="map-radar" clip-path="url(#map-land)" aria-hidden="true">
+      ${[0.25, 0.5, 0.75].map((f) => `<circle class="map-ring" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(reach * f).toFixed(1)}"/>`).join("")}
+      <g class="map-sweep">${fan}<line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(cy - reach).toFixed(1)}"/>
+        <animateTransform attributeName="transform" type="rotate" from="0 ${cx.toFixed(1)} ${cy.toFixed(1)}" to="360 ${cx.toFixed(1)} ${cy.toFixed(1)}" dur="12s" repeatCount="indefinite"/>
+      </g>
+    </g>
     ${sorted
       .map(
         (p) => `<circle class="bubble${p.selected ? " selected" : ""}${anySelected && !p.selected ? " dimmed" : ""}"
