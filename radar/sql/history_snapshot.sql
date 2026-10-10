@@ -19,4 +19,7 @@ SELECT 'major', jm.major, COUNT(*), COUNT(t.role_pay), percentile(t.role_pay, 0.
 FROM t JOIN job_majors jm ON jm.refnr = t.refnr GROUP BY jm.major
 UNION ALL
 SELECT 'german', german, COUNT(*), COUNT(role_pay), percentile(role_pay, 0.5), SUM(no_german)
-FROM t WHERE detail_ok = 1 GROUP BY german;
+FROM t WHERE detail_ok = 1 GROUP BY german
+UNION ALL
+SELECT 'source', source, COUNT(*), COUNT(role_pay), percentile(role_pay, 0.5), SUM(no_german)
+FROM t GROUP BY source;

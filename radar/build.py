@@ -99,10 +99,11 @@ def load_db(jobs_csv=JOBS_CSV):
             round((lo + hi) / 2, 2) if lo is not None else None,
             r["pay_src"], _num(r["hours"], int), _num(r["remote"], int), _num(r["external"], int),
             r["published"], r["first_seen"], r["last_seen"], _num(r["detail_ok"], int) or 0,
+            r.get("source") or "ba", r.get("url") or "",
         ))
         job_skills += [(r["refnr"], s) for s in r["skills"].split("|") if s]
         job_majors += [(r["refnr"], m) for m in r["majors"].split("|") if m]
-    db.executemany(f"INSERT INTO jobs VALUES ({','.join('?' * 22)})", jobs)
+    db.executemany(f"INSERT INTO jobs VALUES ({','.join('?' * 24)})", jobs)
     db.executemany("INSERT INTO job_skills VALUES (?, ?)", job_skills)
     db.executemany("INSERT INTO job_majors VALUES (?, ?)", job_majors)
     return db
@@ -133,8 +134,10 @@ def share(part, whole):
 
 def build_summary(db):
     t = query(db, "totals")[0]
+    sources = {r["source"]: r["jobs"] for r in db.execute("SELECT source, COUNT(*) AS jobs FROM active GROUP BY source")}
     totals = {
         **t,
+        "by_source": sources,
         "pay_share": share(t["with_pay"], t["jobs"]),
         "no_german_share": share(t["no_german"], t["tagged"]),
         "english_posting_share": share(t["english_postings"], t["tagged"]),
@@ -172,7 +175,8 @@ def build_summary(db):
         "source": {
             "name": "Bundesagentur für Arbeit – Jobbörse",
             "url": "https://www.arbeitsagentur.de/jobsuche/",
-            "note": "Werkstudent postings in Germany; job texts are analysed but not published.",
+            "note": "Werkstudent postings in Germany from the Bundesagentur's job board and from company "
+                    "career sites (via arbeitnow.com); job texts are analysed but not published.",
         },
         "method": {
             "pay": "Hourly pay from the posting's salary fields or its text. Each role (company + title) "
@@ -199,7 +203,7 @@ def build_summary(db):
 
 
 def with_url(row):
-    return {**row, "url": JOB_URL.format(refnr=row["refnr"])}
+    return {**row, "url": row.get("url") or JOB_URL.format(refnr=row["refnr"])}
 
 
 def insights(totals, categories, cities, skills):
@@ -298,7 +302,7 @@ def build_checker(db, summary):
             int(r["role_city_first"]),
             company_idx[r["company"]],
         ])
-        rows.append([r["refnr"], r["title"], r["company"], r["city"], r["published"]])
+        rows.append([r["refnr"], r["title"], r["company"], r["city"], r["published"], r["url"]])
     checker = {
         "as_of": summary["as_of"],
         "fields": ["category", "city", "german", "pay", "skills", "role_first", "role_city_first", "company"],
@@ -314,7 +318,7 @@ def build_checker(db, summary):
     postings = {
         "as_of": summary["as_of"],
         "url": JOB_URL,
-        "fields": ["refnr", "title", "company", "city", "published"],
+        "fields": ["refnr", "title", "company", "city", "published", "url"],  # url empty: use the template
         "rows": rows,
     }
     return checker, postings

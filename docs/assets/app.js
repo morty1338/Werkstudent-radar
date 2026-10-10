@@ -508,8 +508,9 @@ async function main() {
     stale.textContent = `The daily update hasn't run for ${ageDays} days, so these numbers may be out of date.`;
     stale.hidden = false;
   }
+  const src = S.totals.by_source || {};
   document.querySelector(".lede").textContent =
-    `Every Werkstudent posting on the Bundesagentur für Arbeit job board. Updated each morning, last on ${fmt.date(D.as_of)}.`;
+    `Every Werkstudent posting on the Bundesagentur für Arbeit job board${src.arbeitnow ? `, plus ${fmt.int(src.arbeitnow)} from company career sites` : ""}. Updated each morning, last on ${fmt.date(D.as_of)}.`;
 
   // Sections get their height only now, so jump to #anchor again.
   const target = location.hash && document.getElementById(location.hash.slice(1));

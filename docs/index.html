@@ -172,7 +172,7 @@
       <details>
         <summary>About the data</summary>
         <div class="about-body">
-          <p><strong>Source.</strong> Every morning a script collects all postings with “Werkstudent”, “Working Student” or “Werkstudierende” in the title from the public job search of the <a href="https://www.arbeitsagentur.de/jobsuche/">Bundesagentur für Arbeit</a>. Jobs posted only on LinkedIn, StepStone or company sites aren't included.</p>
+          <p><strong>Sources.</strong> Every morning a script collects all postings with “Werkstudent”, “Working Student” or “Werkstudierende” in the title from the public job search of the <a href="https://www.arbeitsagentur.de/jobsuche/">Bundesagentur für Arbeit</a>, plus Werkstudent postings from companies' own career sites through the free <a href="https://www.arbeitnow.com/">Arbeitnow</a> job API. A posting found in both counts once. LinkedIn, StepStone and Indeed don't allow automated collection and aren't used; many of their postings come from the same company career sites.</p>
           <p><strong>Pay</strong> comes from the posting's salary fields or phrases like “17,50 € pro Stunde”. Each role counts once, and a median needs at least 10 roles.</p>
           <p><strong>Skills and German</strong> are found by rules with German and English synonyms, checked against 100 labelled postings. <a href="https://github.com/morty1338/werkstudent-radar#accuracy">How accurate they are</a>.</p>
           <p><strong>Your CV</strong> is read and analysed in your browser with the same rules. It is never uploaded or stored.</p>
@@ -183,7 +183,7 @@
   </main>
 
   <footer class="site-footer">
-    <div class="wrap">Werkstudent Radar · data: Bundesagentur für Arbeit · <a href="https://github.com/morty1338/werkstudent-radar">source code</a></div>
+    <div class="wrap">Werkstudent Radar · data: Bundesagentur für Arbeit and company career sites via <a href="https://www.arbeitnow.com/">Arbeitnow</a> · <a href="https://github.com/morty1338/werkstudent-radar">source code</a></div>
   </footer>
 
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>

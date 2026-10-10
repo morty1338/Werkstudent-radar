@@ -23,7 +23,9 @@ CREATE TABLE jobs (
     published   TEXT,
     first_seen  TEXT,
     last_seen   TEXT,
-    detail_ok   INTEGER
+    detail_ok   INTEGER,
+    source      TEXT,             -- ba (Bundesagentur) | arbeitnow (company career sites)
+    url         TEXT              -- link to the original; empty for ba (built from refnr)
 );
 
 CREATE TABLE job_skills (refnr TEXT, skill TEXT, PRIMARY KEY (refnr, skill));

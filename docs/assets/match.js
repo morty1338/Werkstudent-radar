@@ -232,9 +232,10 @@ export function initMatch(ctx, initialIds) {
   }
 
   function row(i, missing) {
-    const [refnr, title, company, city, published] = postings.rows[i];
+    const [refnr, title, company, city, published, link] = postings.rows[i];
     const j = D.jobs[i];
-    const url = postings.url.replace("{refnr}", encodeURIComponent(refnr));
+    // Bundesagentur postings link via the reference number; company career sites have their own URL.
+    const url = link || postings.url.replace("{refnr}", encodeURIComponent(refnr));
     const need = missing ? `<span class="badge need">+ ${missing.map((s) => esc(D.skills[s].label)).join(" or ")}</span>` : "";
     const en = j[J.DE] <= 1 ? `<span class="badge en">${j[J.DE] === 0 ? "No German needed" : "German a plus"}</span>` : "";
     const yours = j[J.SKILLS].filter((s) => selected.has(s)).slice(0, 4).map((s) => esc(D.skills[s].label));
