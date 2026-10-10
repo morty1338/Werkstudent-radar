@@ -6,7 +6,7 @@
     <atom:link href="https://morty1338.github.io/werkstudent-radar/feeds/marketing.xml" rel="self" type="application/rss+xml"/>
     <description>New Werkstudent postings in Germany from the Bundesagentur für Arbeit and company career sites, collected daily by Werkstudent Radar. Links lead to the original postings.</description>
     <language>en</language>
-    <lastBuildDate>Sat, 10 Oct 2026 12:27:37 +0000</lastBuildDate>
+    <lastBuildDate>Sat, 10 Oct 2026 14:55:33 +0000</lastBuildDate>
     <ttl>720</ttl>
   </channel>
 </rss>
