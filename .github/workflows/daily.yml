@@ -75,6 +75,12 @@ jobs:
       - name: Collect postings
         run: python -m radar.collect 2>&1 | tee -a "$LOG"
 
+      # Second source. If it fails, the day still works with the Bundesagentur's
+      # data, and enrich keeps recently seen career-site postings.
+      - name: Collect company career sites (Arbeitnow)
+        continue-on-error: true
+        run: python -m radar.arbeitnow 2>&1 | tee -a "$LOG"
+
       - name: Extract features from new postings
         run: python -m radar.enrich 2>&1 | tee -a "$LOG"
 

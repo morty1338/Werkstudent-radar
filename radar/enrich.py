@@ -6,6 +6,11 @@ Usage:
     python -m radar.enrich --date 2026-10-09
     python -m radar.enrich --retag        # re-run extraction on all active jobs (from the local cache)
 
+Postings come from two sources: the Bundesagentur's job board (data/raw/<date>/
+listings.jsonl.gz, texts fetched per posting) and company career sites via
+Arbeitnow (arbeitnow.jsonl.gz, texts included; see radar/arbeitnow.py).
+Arbeitnow postings that the Bundesagentur also has are skipped.
+
 Only postings that are new, failed before, or were tagged by an older
 extractor version get their full text fetched. Texts are cached locally in
 data/raw/<date>/details.jsonl.gz (git-ignored) and never written to jobs.csv:
@@ -23,7 +28,10 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from . import api
+import re
+from datetime import date, timedelta
+
+from . import api, arbeitnow
 from .extract import EXTRACTOR_VERSION, extract, is_werkstudent
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,7 +42,7 @@ FIELDS = [
     "refnr", "title", "company", "city", "region", "lat", "lon", "category", "hauptberuf",
     "lang", "german", "english", "pay_min", "pay_max", "pay_src", "hours",
     "skills", "majors", "remote", "external", "published",
-    "first_seen", "last_seen", "detail_ok", "xv",
+    "first_seen", "last_seen", "detail_ok", "xv", "source", "url",
 ]
 # Detail fields kept in the local cache: the text plus the salary fields,
 # which are sometimes only filled in the detail record.
@@ -44,6 +52,7 @@ CACHED_DETAIL_FIELDS = [
 ]
 WORKERS = 4
 MAX_MISSING_TEXT = 0.5   # fail the run if more than half the fetched postings have no text
+CARRY_FORWARD_DAYS = 3   # keep recently seen Arbeitnow postings when its crawl was incomplete
 
 log = logging.getLogger("enrich")
 
@@ -116,6 +125,87 @@ def fetch_details(refs, cache_path, workers):
     return details, errors
 
 
+# --- Second source: company career sites via Arbeitnow ------------------------------------
+
+def same_posting_key(company, title):
+    """Company + title, normalised, to spot the same posting on both sources."""
+    norm = lambda s: re.sub(r"[^a-z0-9]", "", re.sub(r"\(.*?\)", "", (s or "").lower()))
+    return norm(company)[:12], norm(title)[:40]
+
+
+def load_arbeitnow(raw_dir):
+    """Postings of the day and whether the crawl finished (None if it didn't run)."""
+    path = os.path.join(raw_dir, "arbeitnow.jsonl.gz")
+    if not os.path.exists(path):
+        return [], None
+    meta_path = os.path.join(raw_dir, "arbeitnow.json")
+    complete = json.load(open(meta_path)).get("complete", False) if os.path.exists(meta_path) else False
+    return read_jsonl_gz(path), complete
+
+
+def merge_arbeitnow(jobs, day, an_jobs, complete, ba_keys, places, retag=False):
+    """Add or update Arbeitnow postings in jobs; returns counts for the log.
+
+    ba_keys: same_posting_key()s of today's Bundesagentur postings (those win).
+    places: {city: (lat, lon)} of German places known from the Bundesagentur data.
+    """
+    stats = {"kept": 0, "not_werkstudent": 0, "duplicates": 0, "abroad": 0, "carried": 0}
+    seen = set()
+    for job in an_jobs:
+        if not arbeitnow.is_werkstudent_job(job):  # the rule may have changed since the crawl
+            stats["not_werkstudent"] += 1
+            continue
+        key = same_posting_key(job.get("company_name"), job.get("title"))
+        if key in ba_keys:
+            stats["duplicates"] += 1
+            continue
+        city, remote, in_germany = arbeitnow.place(job.get("location"), places)
+        if not in_germany:
+            stats["abroad"] += 1
+            continue
+        ref = arbeitnow.ref(job)
+        seen.add(ref)
+        row = jobs.get(ref)
+        text = arbeitnow.html_to_text(job.get("description"))
+        if needs_tagging(row, retag):
+            listing = {
+                "stellenangebotsTitel": job.get("title") or "",
+                "hauptberuf": "",
+                "homeofficemoeglich": remote or bool(job.get("remote")),
+                "stellenlokationen": [{"adresse": {"ort": city}}],
+            }
+            row = {**(row or {}), **extract(listing, {"stellenangebotsBeschreibung": text})}
+        lat, lon = places.get(city, ("", ""))
+        row.update({
+            "refnr": ref,
+            "title": (job.get("title") or "").strip(),
+            "company": (job.get("company_name") or "").strip(),
+            "city": city,
+            "region": "",
+            "lat": lat,
+            "lon": lon,
+            "hauptberuf": "",
+            "external": 1,
+            "published": arbeitnow.published(job),
+            "first_seen": row.get("first_seen") or day,
+            "last_seen": day,
+            "source": "arbeitnow",
+            "url": job.get("url") or "",
+        })
+        jobs[ref] = row
+        stats["kept"] += 1
+
+    if not complete:
+        # The crawl stopped early (or didn't run): postings it didn't reach are
+        # probably still online, so keep the recently seen ones for today.
+        cutoff = (date.fromisoformat(day) - timedelta(days=CARRY_FORWARD_DAYS)).isoformat()
+        for ref, row in jobs.items():
+            if row.get("source") == "arbeitnow" and ref not in seen and cutoff <= row["last_seen"] < day:
+                row["last_seen"] = day
+                stats["carried"] += 1
+    return stats
+
+
 def needs_tagging(row, retag):
     return (
         row is None
@@ -169,13 +259,28 @@ def main():
             "published": listing.get("datumErsteVeroeffentlichung") or "",
             "first_seen": row.get("first_seen") or day,
             "last_seen": day,
+            "source": "ba",
+            "url": "",
         })
         jobs[ref] = row
 
+    # Company career sites (Arbeitnow). German places and their coordinates come
+    # from the Bundesagentur's postings.
+    an_jobs, complete = load_arbeitnow(raw_dir)
+    places = {}
+    for row in jobs.values():
+        if row.get("source", "ba") != "arbeitnow" and row.get("city") and row.get("lat") not in ("", None):
+            places.setdefault(row["city"], (row["lat"], row["lon"]))
+    ba_keys = {same_posting_key(jobs[r]["company"], jobs[r]["title"]) for r in listings}
+    stats = merge_arbeitnow(jobs, day, an_jobs, complete, ba_keys, places, args.retag)
+    log.info("arbeitnow: %s (%s)", stats, "no crawl today" if complete is None else "complete" if complete else "INCOMPLETE crawl")
+
     save_jobs(jobs)
-    tagged = sum(1 for ref in listings if str(jobs[ref].get("detail_ok")) == "1")
-    log.info("wrote %s: %d jobs total, %d active on %s, %d of them with extracted features",
-             os.path.relpath(JOBS_CSV, ROOT), len(jobs), len(listings), day, tagged)
+    active = [r for r in jobs.values() if r["last_seen"] == day]
+    tagged = sum(1 for r in active if str(r.get("detail_ok")) == "1")
+    log.info("wrote %s: %d jobs total, %d active on %s (%d from company career sites), %d with extracted features",
+             os.path.relpath(JOBS_CSV, ROOT), len(jobs), len(active), day,
+             sum(r.get("source") == "arbeitnow" for r in active), tagged)
 
     if fetched and missing_text / len(fetched) > MAX_MISSING_TEXT:
         log.error("%d of %d fetched postings came back without text (%d request errors); "
