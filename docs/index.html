@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Werkstudent Radar</title>
   <meta name="description" content="Werkstudent jobs in Germany in numbers: where they are, what they pay, which skills they ask for, and which ones fit you. Updated daily.">
   <meta property="og:title" content="Werkstudent Radar">
@@ -26,25 +26,33 @@
         <span>Werkstudent Radar</span>
       </a>
       <nav class="nav" aria-label="Sections">
-        <a href="#where">Jobs</a>
-        <a href="#pay">Pay</a>
-        <a href="#skills">Skills</a>
-        <a href="#programmes">Degrees</a>
-        <a href="#trends">Trends</a>
-        <a href="#check">Your skills</a>
+        <a href="#where"><b class="nav-num" aria-hidden="true">01</b>Jobs</a>
+        <a href="#pay"><b class="nav-num" aria-hidden="true">02</b>Pay</a>
+        <a href="#skills"><b class="nav-num" aria-hidden="true">03</b>Skills</a>
+        <a href="#programmes"><b class="nav-num" aria-hidden="true">04</b>Degrees</a>
+        <a href="#trends"><b class="nav-num" aria-hidden="true">05</b>Trends</a>
+        <a href="#check" aria-label="Your skills"><b class="nav-num" aria-hidden="true">06</b><span class="nav-full">Your skills</span><span class="nav-short">Match</span></a>
       </nav>
     </div>
     <div class="filterbar" id="filterbar">
       <div class="wrap filter-row">
-        <label class="sr-only" for="f-field">Field</label>
-        <select id="f-field"><option value="">All fields</option></select>
-        <label class="sr-only" for="f-city">City</label>
-        <select id="f-city"><option value="">All of Germany</option></select>
-        <label class="switch"><input type="checkbox" id="f-nogerman"><span>No German needed</span></label>
+        <button type="button" class="filters-btn" id="f-open" aria-expanded="false" aria-controls="f-sheet">Filters</button>
+        <div class="filter-chips" id="f-chips"></div>
+        <!-- Inline on wide screens; a bottom sheet behind the Filters button on phones. -->
+        <div class="filter-controls" id="f-sheet">
+          <div class="sheet-head"><strong>Filters</strong><button type="button" class="link-btn" id="f-close">Close</button></div>
+          <label class="sr-only" for="f-field">Field</label>
+          <select id="f-field"><option value="">All fields</option></select>
+          <label class="sr-only" for="f-city">City</label>
+          <select id="f-city"><option value="">All of Germany</option></select>
+          <label class="switch"><input type="checkbox" id="f-nogerman"><span>No German needed</span></label>
+          <button type="button" class="btn sheet-done" id="f-done">Show jobs</button>
+        </div>
         <span class="filter-count" id="f-count"></span>
         <button type="button" class="link-btn" id="f-reset" hidden>Reset</button>
       </div>
     </div>
+    <div class="sheet-backdrop" id="f-backdrop" hidden></div>
   </header>
 
   <main id="top">

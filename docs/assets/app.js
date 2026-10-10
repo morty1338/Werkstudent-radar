@@ -114,6 +114,29 @@ async function main() {
   fDe.addEventListener("change", () => { state.noGerman = fDe.checked; render(); });
   fReset.addEventListener("click", () => { Object.assign(state, { field: -1, city: -1, noGerman: false }); render(); });
 
+  // Phones: the filters live in a bottom sheet; active ones show as removable chips.
+  const sheet = document.getElementById("f-sheet");
+  const fOpen = document.getElementById("f-open");
+  const backdrop = document.getElementById("f-backdrop");
+  function setSheet(open) {
+    sheet.classList.toggle("open", open);
+    backdrop.hidden = !open;
+    fOpen.setAttribute("aria-expanded", String(open));
+    document.body.classList.toggle("sheet-open", open);
+    (open ? fField : fOpen).focus({ preventScroll: true });
+  }
+  fOpen.addEventListener("click", () => setSheet(true));
+  for (const id of ["f-backdrop", "f-close", "f-done"]) document.getElementById(id).addEventListener("click", () => setSheet(false));
+  document.addEventListener("keydown", (e) => e.key === "Escape" && sheet.classList.contains("open") && setSheet(false));
+  document.getElementById("f-chips").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-clear]");
+    if (!b) return;
+    if (b.dataset.clear === "field") state.field = -1;
+    if (b.dataset.clear === "city") state.city = -1;
+    if (b.dataset.clear === "german") state.noGerman = false;
+    render();
+  });
+
   function renderFilters(all) {
     if (state.city >= TOP_CITIES && ![...fCity.options].some((o) => Number(o.value) === state.city)) {
       fCity.add(new Option(D.cities[state.city].name, state.city));
@@ -125,6 +148,15 @@ async function main() {
     fCity.classList.toggle("active", state.city >= 0);
     fReset.hidden = state.field < 0 && state.city < 0 && !state.noGerman;
     document.getElementById("f-count").textContent = `${fmt.int(all.length)} jobs`;
+    document.getElementById("f-done").textContent = `Show ${fmt.int(all.length)} jobs`;
+    const chips = [
+      state.field >= 0 && ["field", catLabel(state.field)],
+      state.city >= 0 && ["city", D.cities[state.city].name],
+      state.noGerman && ["german", "No German"],
+    ].filter(Boolean);
+    document.getElementById("f-chips").innerHTML = chips
+      .map(([k, label]) => `<button type="button" class="filter-pill" data-clear="${k}" aria-label="Remove filter: ${esc(label)}">${esc(label)} <span aria-hidden="true">✕</span></button>`)
+      .join("");
   }
 
   // Clicks and Enter/Space on any data-key row inside a container.
@@ -523,6 +555,20 @@ async function main() {
   const status = document.getElementById("status");
   status.classList.toggle("is-stale", ageDays > 2);
   status.innerHTML = `<span class="status-dot" aria-hidden="true">●</span> ${ageDays > 2 ? "STALE" : "LIVE"} · LAST SCAN <time datetime="${esc(S.generated_at || D.as_of)}">${esc(scanned)}</time>`;
+
+  // Mark the section in view in the nav (the bottom tab bar on phones).
+  const navLinks = [...document.querySelectorAll(".nav a")];
+  const spy = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        navLinks.forEach((a) => (a.hash === `#${e.target.id}` ? a.setAttribute("aria-current", "location") : a.removeAttribute("aria-current")));
+      }
+    },
+    { rootMargin: "-40% 0px -55% 0px" },
+  );
+  navLinks.forEach((a) => spy.observe(document.querySelector(a.hash)));
+  spy.observe(document.querySelector(".hero"));
 
   // Sections get their height only now, so jump to #anchor again.
   const target = location.hash && document.getElementById(location.hash.slice(1));

@@ -39,7 +39,8 @@ map) a tap within 22 px of a small bubble picks the nearest one.
 `data-key` handlers (`onPick`) and call `render()`, which redraws every
 filtered section; degrees and trends are not filtered. Section anchors:
 `#where #pay #skills #programmes #trends #check`, under a sticky header with the
-filter bar.
+filter bar; an IntersectionObserver sets `aria-current` on the nav link in view.
+Active filters also show as removable chips in `#f-chips` (phones only).
 
 **Fonts and colors:** text uses the system font stack (`ui-sans-serif,
 system-ui, -apple-system, …`). Numbers (KPI values, axis labels, section numbers,
@@ -57,7 +58,12 @@ amber; non-highlighted, dimmed and low-confidence marks use `--muted-bar` `#6B63
 - `checker.json` rows are positional (`J` indices in `app.js`); `postings.json`
   is matched to it by position and `as_of`.
 - JS looks up many element ids from `index.html`; renaming an id fails silently.
-- `scroll-padding-top: 116px` and `.skill-detail { top: 124px }` depend on the header height.
+- Anchor offsets (`scroll-padding-top`, `.skill-detail` top) use `--header-h`, built from
+  `--header-row-h` and `--filter-row-h`; change those, not the offsets.
+- Phones (≤560 px): `.nav` becomes a fixed bottom tab bar and `#f-sheet` (the filter
+  controls, `display: contents` on wide screens) a bottom sheet behind `#f-open`.
+  Both are inside `.site-header`, so it must not get `backdrop-filter`/`transform` there.
+  Form fields stay ≥16px on phones, or iOS zooms in and the page scrolls sideways.
 - Headless Chrome can't render narrower than ~500 px; check mobile layout with a
   real 375 px viewport.
 - Local preview: `python3 -m http.server --directory docs`.
