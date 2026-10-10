@@ -76,7 +76,7 @@ Rules for every phase:
 
 - [x] Optional SQL playground: DuckDB-WASM lazy-loaded from jsDelivr only when opened,
       over a Parquet export of aggregated postings (no texts); 3–4 example queries.
-- [ ] Lighthouse CI (desktop) in GitHub Actions; Performance, Accessibility,
+- [x] Lighthouse CI (desktop) in GitHub Actions; Performance, Accessibility,
       Best Practices ≥ 90.
 - [x] German/English UI toggle: strings in one dictionary, language in the URL.
 

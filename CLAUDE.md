@@ -89,6 +89,10 @@ amber; non-highlighted, dimmed and low-confidence marks use `--muted-bar` `#6B63
   Form fields stay ≥16px on phones, or iOS zooms in and the page scrolls sideways.
 - Headless Chrome can't render narrower than ~500 px; check mobile layout with a
   real 375 px viewport.
+- Lighthouse CI (`lighthouse.yml`, `lighthouserc.json`) fails below 90 in Performance,
+  Accessibility or Best Practices. Keep JS-filled text from shifting the layout
+  (`.insight[id]` reserves two lines; filter selects have fixed widths on desktop).
+  Run locally: `npx --yes @lhci/cli@0.14.0 autorun` (needs Chrome).
 - Local preview: `python3 -m http.server --directory docs`.
 
 **Planned redesign:** "Radar / departure board" style, done incrementally —

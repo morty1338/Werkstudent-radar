@@ -1,0 +1,47 @@
+name: Lighthouse
+
+# Audits the website (desktop preset, 3 runs, median) on every change to it.
+# Fails when Performance, Accessibility or Best Practices drop below 90; the
+# thresholds are in lighthouserc.json. Reports stay in the runner (no upload to
+# a third-party server); the scores go into the run summary.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "lighthouserc.json"
+      - ".github/workflows/lighthouse.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - "lighthouserc.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run Lighthouse CI
+        run: npx --yes @lhci/cli@0.14.0 autorun
+
+      - name: Write scores to the run summary
+        if: always()
+        run: |
+          python3 - >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import glob, json, statistics
+          runs = [json.load(open(f)) for f in sorted(glob.glob(".lighthouseci/lhr-*.json"))]
+          if not runs:
+              print("No Lighthouse results.")
+              raise SystemExit
+          cats = list(runs[0]["categories"])
+          print("### Lighthouse (desktop, median of", len(runs), "runs)\n")
+          print("| " + " | ".join(runs[0]["categories"][c]["title"] for c in cats) + " |")
+          print("|" + "---|" * len(cats))
+          print("| " + " | ".join(str(round(100 * statistics.median(r["categories"][c]["score"] for r in runs))) for c in cats) + " |")
+          EOF

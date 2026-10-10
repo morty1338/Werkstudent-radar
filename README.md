@@ -2,6 +2,7 @@
 
 [![Daily data update](https://github.com/morty1338/werkstudent-radar/actions/workflows/daily.yml/badge.svg)](https://github.com/morty1338/werkstudent-radar/actions/workflows/daily.yml)
 [![Tests](https://github.com/morty1338/werkstudent-radar/actions/workflows/tests.yml/badge.svg)](https://github.com/morty1338/werkstudent-radar/actions/workflows/tests.yml)
+[![Lighthouse](https://github.com/morty1338/werkstudent-radar/actions/workflows/lighthouse.yml/badge.svg)](https://github.com/morty1338/werkstudent-radar/actions/workflows/lighthouse.yml)
 
 [![Today's numbers](docs/data/og.png)](https://morty1338.github.io/werkstudent-radar/)
 
@@ -226,6 +227,15 @@ trigger Pages builds on their own.
 
 [`tests.yml`](.github/workflows/tests.yml) runs the test suite on every push
 and pull request (badge at the top).
+
+[`lighthouse.yml`](.github/workflows/lighthouse.yml) audits the site with
+Lighthouse CI (desktop, median of 3 runs) whenever `docs/` changes and fails
+below 90 in Performance, Accessibility or Best Practices
+([`lighthouserc.json`](lighthouserc.json)). Scores at the time of writing: 100
+in all four categories. Two fixes got there: the tab buttons of the pay chart
+lacked `role="tab"`, and the page shifted while loading (CLS 0.11 → 0.04) because
+the insight lines and filter menus grew when the data arrived; they now reserve
+their space.
 
 ## Website (`docs/`)
 
