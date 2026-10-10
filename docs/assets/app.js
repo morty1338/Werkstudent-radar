@@ -1,6 +1,7 @@
-import { barList, bubbleMap, dotRange, esc, fmt, histogram, initTooltip, lineChart, rollDigits } from "./charts.js?v=dev";
+import { barList, bubbleMap, dotRange, esc, fmt, histogram, initTooltip, lineChart, rollDigits, survivalChart } from "./charts.js?v=dev";
 import { initCv } from "./cv.js?v=dev";
 import { initMatch } from "./match.js?v=dev";
+import { medianCI } from "./stats.js?v=dev";
 
 // Column positions in checker.json "jobs" rows.
 export const J = { CAT: 0, CITY: 1, DE: 2, PAY: 3, SKILLS: 4, ROLE: 5, ROLE_CITY: 6, COMPANY: 7 };
@@ -24,9 +25,13 @@ function quantile(sorted, q) {
 
 async function main() {
   initTooltip();
-  let S, D, H;
+  let S, D, H, L, C;
   try {
-    [S, D, H] = await Promise.all([load("summary"), load("checker"), load("history")]);
+    // lifetimes and cooccurrence are extras: the page works without them.
+    [S, D, H, L, C] = await Promise.all([
+      load("summary"), load("checker"), load("history"),
+      load("lifetimes").catch(() => null), load("cooccurrence").catch(() => null),
+    ]);
   } catch (e) {
     document.getElementById("tiles").innerHTML = `<p class="stale">Couldn't load the data (${esc(e.message)}). Please try again later.</p>`;
     return;
@@ -71,17 +76,26 @@ async function main() {
     }
     values.sort((a, b) => a - b);
     const top = Math.max(0, ...byCompany.values());
+    const median = quantile(values, 0.5);
+    // A median needs enough roles and employers, and a 95% CI no wider than a quarter of it.
+    const sample = values.length >= D.min_pay_sample && byCompany.size >= 5;
+    const ci = sample ? medianCI(values) : null;
+    const precise = Boolean(ci) && (ci[1] - ci[0]) / median <= (D.max_ci_rel_width ?? 0.25);
     return {
       n: values.length,
       values,
       p25: quantile(values, 0.25),
-      median: quantile(values, 0.5),
+      median,
       p75: quantile(values, 0.75),
+      ci,
       employers: byCompany.size,
       topShare: values.length ? top / values.length : 0,
-      enough: values.length >= D.min_pay_sample && byCompany.size >= 5,
+      enough: sample && precise,
+      why: !sample ? "too few rates stated" : precise ? "" : "too few rates to be sure",
     };
   }
+  // "95% CI €15.40–17.60"
+  const ciText = (lo, hi) => (lo == null ? "" : `95% CI ${fmt.eur(lo)}–${hi.toFixed(2)}`);
 
   const ctx = { D, S, J, state, pool, payStats, catLabel, skillLabel, render: () => render(), syncUrl: () => syncUrl() };
 
@@ -205,7 +219,7 @@ async function main() {
     const where = [state.field >= 0 ? catLabel(state.field) : null, state.city >= 0 ? D.cities[state.city].name : null].filter(Boolean).join(" · ");
     const tiles = [
       { href: "#where", label: where ? `Jobs · ${where}` : "Werkstudent jobs online", value: fmt.int(all.length), sub: `in ${fmt.int(places)} ${places === 1 ? "place" : "places"}` },
-      { href: "#pay", label: "Median pay", value: ps.enough ? fmt.eur(ps.median) : "—", sub: ps.enough ? `per hour · half earn ${fmt.eur0(ps.p25)}–${fmt.eur0(ps.p75)}` : "too few rates stated" },
+      { href: "#pay", label: "Median pay", value: ps.enough ? fmt.eur(ps.median) : "—", sub: ps.enough ? `per hour · ${ciText(...ps.ci)}` : ps.why },
       { href: "#skills", label: "Most asked-for skill", value: top ? top.label : "—", sub: top ? `in ${fmt.pct(top.share, 0)} of jobs` : "", small: true },
       { href: "#where", label: "Most jobs in", value: bigCity >= 0 ? D.cities[bigCity].name : "—", sub: bigCity >= 0 ? `${fmt.int(bigCount)} jobs` : "", small: true },
     ];
@@ -292,7 +306,7 @@ async function main() {
           p75: ps.p75,
           muted,
           selected: (state.payBy === "field" ? state.field : state.city) === k,
-          tip: `<strong>${esc(label(k))}</strong><br>Median ${fmt.eur(ps.median)}/h<br>Half earn ${fmt.eur(ps.p25)}–${fmt.eur(ps.p75)}<br>${ps.n} roles from ${ps.employers} employers${muted ? `<br>${fmt.pct(ps.topShare, 0)} of these rates come from one employer` : ""}`,
+          tip: `<strong>${esc(label(k))}</strong><br>Median ${fmt.eur(ps.median)}/h · ${ciText(...ps.ci)}<br>Half earn ${fmt.eur(ps.p25)}–${fmt.eur(ps.p75)}<br>${ps.n} roles from ${ps.employers} employers${muted ? `<br>${fmt.pct(ps.topShare, 0)} of these rates come from one employer` : ""}`,
           jobs,
         };
       })
@@ -320,7 +334,7 @@ async function main() {
       });
       hist.insertAdjacentHTML("beforeend", `<div class="pay-trio">
         <div><span>${fmt.eur(ps.p25)}</span>a quarter earn less</div>
-        <div class="mid"><span>${fmt.eur(ps.median)}</span>median</div>
+        <div class="mid"><span>${fmt.eur(ps.median)}</span>median${ps.ci ? `<small class="ci">${ciText(...ps.ci)}</small>` : ""}</div>
         <div><span>${fmt.eur(ps.p75)}</span>a quarter earn more</div></div>`);
     } else hist.innerHTML = `<p class="empty">No stated rates for this selection.</p>`;
 
@@ -374,7 +388,7 @@ async function main() {
       .map((g) => `<button type="button" class="chip" data-group="${esc(g)}" aria-pressed="${state.skillGroup === g}">${esc(g)}</button>`)
       .join("");
     const shown = ranked.filter((r) => state.skillGroup === "All" || r.group === state.skillGroup).slice(0, 15);
-    if (state.skill == null || !shown.some((r) => r.key === state.skill)) state.skill = shown[0]?.key ?? null;
+    if (state.skill == null || !ranked.some((r) => r.key === state.skill)) state.skill = shown[0]?.key ?? null;
     barList(
       document.getElementById("skill-bars"),
       shown.map((r) => ({
@@ -397,6 +411,18 @@ async function main() {
     renderSkillDetail(all, ranked);
   }
 
+  // Skills most often asked for together with this one (cooccurrence.json, whole market).
+  function related(i) {
+    const list = C?.skills?.[D.skills[i].id] ?? [];
+    const chips = list
+      .map(([id, lift, share]) => [D.skills.findIndex((s) => s.id === id), lift, share])
+      .filter(([j]) => j >= 0)
+      .map(([j, lift, share]) => `<button type="button" class="chip" data-skill="${j}"
+          data-tip="${esc(`<strong>${esc(D.skills[j].label)}</strong><br>in ${fmt.pct(share, 0)} of jobs asking for ${esc(D.skills[i].label)}<br>${lift}× as often as by chance`)}">${esc(D.skills[j].label)} <span class="lift">${lift}×</span></button>`)
+      .join("");
+    return chips ? `<h3>Often asked together</h3><div class="chips-row related">${chips}</div>` : "";
+  }
+
   function renderSkillDetail(all, ranked) {
     const el = document.getElementById("skill-detail");
     const r = ranked.find((x) => x.key === state.skill);
@@ -417,11 +443,13 @@ async function main() {
       <div class="sd-name">${esc(r.label)}</div>
       <p class="sd-big">in ${fmt.pct(r.share, 1)} of jobs · ${fmt.int(r.n)} postings</p>
       <div class="sd-stats">
-        <div class="sd-stat"><div class="v">${ps.enough ? fmt.eur(ps.median) : "—"}</div><div class="l">median pay${diff != null ? ` (${fmt.signedPct(diff)} vs all)` : ""}</div></div>
+        <div class="sd-stat"><div class="v">${ps.enough ? fmt.eur(ps.median) : "—"}</div><div class="l">median pay${diff != null ? ` (${fmt.signedPct(diff)} vs all)` : ""}</div>${
+          ps.enough ? `<div class="ci">${ciText(...ps.ci)}</div>` : `<div class="ci">${ps.why}</div>`}</div>
         <div class="sd-stat"><div class="v">${fmt.pct(topCats[0] ? topCats[0][1] / withIt.length : null, 0)}</div><div class="l">in ${esc(topCats[0] ? catLabel(topCats[0][0]) : "—")}</div></div>
       </div>
       <h3>Where it's asked for</h3>
       <div id="sd-fields"></div>
+      ${related(r.key)}
       <div class="sd-actions">
         <button type="button" class="btn" data-act="jobs">Show ${fmt.int(r.n)} jobs</button>
         <button type="button" class="chip" data-act="have" aria-pressed="${have}">${have ? "✓ In your skills" : "+ I have this"}</button>
@@ -432,6 +460,12 @@ async function main() {
       { max: 1 },
     );
     el.querySelector('[data-act="jobs"]').addEventListener("click", () => ctx.match.showSkill(r.key));
+    el.querySelector(".related")?.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-skill]");
+      if (!b) return;
+      state.skill = Number(b.dataset.skill);
+      renderSkills();
+    });
     el.querySelector('[data-act="have"]').addEventListener("click", () => ctx.match.toggleSkill(r.key));
   }
 
@@ -460,7 +494,8 @@ async function main() {
         <div class="mj-stats">
           <div class="mj-stat"><div class="label">Jobs mentioning it</div><div class="value">${fmt.int(m.jobs)}</div></div>
           <div class="mj-stat"><div class="label">Share of all jobs</div><div class="value">${fmt.pct(m.share, 0)}</div></div>
-          <div class="mj-stat"><div class="label">Median pay</div><div class="value">${fmt.eur(m.median_pay)}</div></div>
+          <div class="mj-stat"><div class="label">Median pay</div><div class="value">${fmt.eur(m.median_pay)}</div>${
+            m.median_pay != null ? `<div class="ci">${ciText(m.median_pay_lo, m.median_pay_hi)}</div>` : ""}</div>
           <div class="mj-stat"><div class="label">Top field</div><div class="value" style="font-size:20px">${esc(topField ? catLabel(D.categories.indexOf(topField.key)) : "—")}</div></div>
         </div>
         <div class="mj-grid">
@@ -500,7 +535,29 @@ async function main() {
         ? `A snapshot is taken every morning since ${fmt.date(H.dates[0])}. Trends appear after a few weeks.`
         : `${days} daily snapshots since ${fmt.date(H.dates[0])}.`;
     lineChart(document.getElementById("tr-jobs"), H.dates, H.series["total:all:jobs"], { label: "Postings", format: fmt.int });
-    lineChart(document.getElementById("tr-pay"), H.dates, H.series["total:all:median_pay"], { label: "Median pay", format: fmt.eur });
+    lineChart(document.getElementById("tr-pay"), H.dates, H.series["total:all:median_pay"], {
+      label: "Median pay", format: fmt.eur,
+      band: { lo: H.series["total:all:median_pay_lo"], hi: H.series["total:all:median_pay_hi"] },
+    });
+    renderLifetimes();
+  }
+
+  // How long postings stay online: Kaplan–Meier curve from lifetimes.json.
+  function renderLifetimes() {
+    const card = document.getElementById("lifetimes");
+    if (!L) {
+      card.hidden = true;
+      return;
+    }
+    survivalChart(document.getElementById("tr-life"), L.curve.rows);
+    const fields = Object.entries(L.by_field)
+      .filter(([, f]) => f.median_days != null)
+      .sort((a, b) => a[1].median_days - b[1].median_days);
+    const median = L.median_days != null
+      ? `Half of the postings are gone <strong>${L.median_days} days</strong> after publication.`
+      : `More than half are still online <strong>${L.observed_until} days</strong> after publication; the median will show once more postings have gone offline.`;
+    document.getElementById("tr-life-note").innerHTML = `${median} Based on ${fmt.int(L.postings)} Bundesagentur postings, ${fmt.int(L.gone)} of them gone so far.${
+      fields.length ? ` Shortest: ${fields.slice(0, 3).map(([k, f]) => `${esc(catLabel(D.categories.indexOf(k)))} ${f.median_days} days`).join(", ")}.` : ""}`;
   }
 
   // --- Wiring -----------------------------------------------------------------------------------------

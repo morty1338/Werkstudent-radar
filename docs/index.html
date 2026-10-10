@@ -136,7 +136,12 @@
       <p class="insight" id="trends-insight"></p>
       <div class="grid-2">
         <div class="card"><h3>Postings online</h3><div id="tr-jobs" class="line-chart"></div></div>
-        <div class="card"><h3>Median hourly pay</h3><div id="tr-pay" class="line-chart"></div></div>
+        <div class="card"><h3>Median hourly pay <span class="hint-inline">shaded: 95% confidence interval</span></h3><div id="tr-pay" class="line-chart"></div></div>
+      </div>
+      <div class="card card-wide" id="lifetimes">
+        <h3>How long postings stay online <span class="hint-inline">share still online, by days since publication</span></h3>
+        <div id="tr-life" class="line-chart survival"></div>
+        <p class="legend-line" id="tr-life-note"></p>
       </div>
     </section>
 

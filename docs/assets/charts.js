@@ -293,8 +293,12 @@ function niceStep(range, ticks) {
   return (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
 }
 
-export function lineChart(el, dates, values, { format = fmt.int, label = "" } = {}) {
-  const pts = dates.map((d, i) => ({ d, v: values[i] })).filter((p) => p.v != null);
+// band: optional { lo: [...], hi: [...] } aligned with dates, drawn as a shaded range
+// (a 95% confidence interval) where both ends are known.
+export function lineChart(el, dates, values, { format = fmt.int, label = "", band = null } = {}) {
+  const pts = dates
+    .map((d, i) => ({ d, v: values[i], lo: band?.lo?.[i] ?? null, hi: band?.hi?.[i] ?? null }))
+    .filter((p) => p.v != null);
   if (!pts.length) {
     el.innerHTML = `<p class="empty">No data yet.</p>`;
     return;
@@ -304,7 +308,7 @@ export function lineChart(el, dates, values, { format = fmt.int, label = "" } = 
     const W = Math.max(el.clientWidth, 260);
     const H = 180;
     const m = { l: 46, r: 64, t: 12, b: 26 };
-    const vs = pts.map((p) => p.v);
+    const vs = pts.flatMap((p) => [p.v, p.lo, p.hi]).filter((v) => v != null);
     let lo = Math.min(...vs);
     let hi = Math.max(...vs);
     if (hi === lo) {
@@ -327,11 +331,23 @@ export function lineChart(el, dates, values, { format = fmt.int, label = "" } = 
     const path = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join("");
     const area = pts.length > 1 ? `${path}L${x(pts.length - 1)},${y(lo)}L${x(0)},${y(lo)}Z` : "";
     const last = pts[pts.length - 1];
+    const banded = pts.map((p, i) => ({ ...p, i })).filter((p) => p.lo != null && p.hi != null);
+    const bandPath = banded.length
+      ? banded.length === 1
+        ? `M${x(banded[0].i) - 3},${y(banded[0].hi)}h6V${y(banded[0].lo)}h-6Z`
+        : `M${banded.map((p) => `${x(p.i).toFixed(1)},${y(p.hi).toFixed(1)}`).join("L")}L${banded
+            .slice()
+            .reverse()
+            .map((p) => `${x(p.i).toFixed(1)},${y(p.lo).toFixed(1)}`)
+            .join("L")}Z`
+      : "";
+    const ci = (p) => (p.lo != null ? ` (95% CI ${format(p.lo)}–${format(p.hi)})` : "");
 
-    el.innerHTML = `<svg data-hover viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}: latest ${esc(format(last.v))}">
+    el.innerHTML = `<svg data-hover viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}: latest ${esc(format(last.v))}${esc(ci(last))}">
       <g class="grid">${grid}</g>
       <g class="axis">${yLabels}${xLabels}</g>
-      ${area ? `<path class="area" d="${area}"></path>` : ""}
+      ${bandPath ? `<path class="band" d="${bandPath}"></path>` : ""}
+      ${area && !bandPath ? `<path class="area" d="${area}"></path>` : ""}
       ${pts.length > 1 ? `<path class="line" d="${path}"></path>` : ""}
       <line class="crosshair" x1="0" x2="0" y1="${m.t}" y2="${H - m.b}" visibility="hidden"></line>
       <circle class="end" cx="${x(pts.length - 1)}" cy="${y(last.v)}" r="4"></circle>
@@ -350,7 +366,81 @@ export function lineChart(el, dates, values, { format = fmt.int, label = "" } = 
       cross.setAttribute("x1", x(best));
       cross.setAttribute("x2", x(best));
       cross.setAttribute("visibility", "visible");
-      showTooltip(`<strong>${esc(fmt.date(pts[best].d))}</strong><br>${esc(label)}: ${esc(format(pts[best].v))}`, e.clientX, e.clientY);
+      showTooltip(`<strong>${esc(fmt.date(pts[best].d))}</strong><br>${esc(label)}: ${esc(format(pts[best].v))}${esc(ci(pts[best]))}`, e.clientX, e.clientY);
+    });
+    svg.addEventListener("pointerleave", () => {
+      cross.setAttribute("visibility", "hidden");
+      hideTooltip();
+    });
+  };
+
+  draw();
+  let width = el.clientWidth;
+  new ResizeObserver(() => {
+    if (Math.abs(el.clientWidth - width) > 4) {
+      width = el.clientWidth;
+      draw();
+    }
+  }).observe(el);
+}
+
+// --- Survival curve (how long postings stay online) ----------------------------------------
+// rows: [[days, share, lo, hi, atRisk], ...] from lifetimes.json, starting at day 0.
+// Drawn as steps (Kaplan–Meier) with the 95% band behind it.
+
+export function survivalChart(el, rows, { label = "Still online" } = {}) {
+  if (!rows || rows.length < 2) {
+    el.innerHTML = `<p class="empty">Not enough postings have gone offline yet.</p>`;
+    return;
+  }
+  const draw = () => {
+    const W = Math.max(el.clientWidth, 260);
+    const H = 200;
+    const m = { l: 46, r: 64, t: 12, b: 26 };
+    const tMax = rows[rows.length - 1][0];
+    const span = Math.max(tMax, 1);
+    const x = (t) => m.l + (t / span) * (W - m.l - m.r);
+    const y = (s) => m.t + (1 - s) * (H - m.t - m.b);
+    const step = (col) =>
+      rows.map((r, i) => (i ? `H${x(r[0]).toFixed(1)}V${y(r[col]).toFixed(1)}` : `M${x(0)},${y(r[col]).toFixed(1)}`)).join("");
+    // The band: upper edge forward, lower edge back, both as steps.
+    let band = `${step(3)}L${x(tMax).toFixed(1)},${y(rows[rows.length - 1][2]).toFixed(1)}`;
+    for (let k = rows.length - 2; k >= 0; k--) band += `V${y(rows[k][2]).toFixed(1)}H${x(rows[k][0]).toFixed(1)}`;
+    band += "Z";
+    const ticks = [0, 0.25, 0.5, 0.75, 1];
+    const grid = ticks.map((v) => `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"></line>`).join("");
+    const yLabels = ticks.map((v) => `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v * 100}%</text>`).join("");
+    const dayStep = niceStep(span, 4);
+    const xTicks = [];
+    for (let t = 0; t <= span + 1e-9; t += dayStep) xTicks.push(t);
+    const xLabels = xTicks.map((t) => `<text x="${x(t)}" y="${H - 6}" text-anchor="middle">${t}d</text>`).join("");
+    const last = rows[rows.length - 1];
+    const half = rows.find((r) => r[1] <= 0.5);
+
+    el.innerHTML = `<svg data-hover viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)} after ${tMax} days: ${fmt.pct(last[1], 0)}">
+      <g class="grid">${grid}</g>
+      <g class="axis">${yLabels}${xLabels}</g>
+      <path class="band" d="${band}"></path>
+      <line class="half" x1="${m.l}" x2="${W - m.r}" y1="${y(0.5)}" y2="${y(0.5)}"></line>
+      <path class="line" d="${step(1)}"></path>
+      ${half ? `<circle class="end" cx="${x(half[0])}" cy="${y(half[1])}" r="4"></circle>` : ""}
+      <line class="crosshair" x1="0" x2="0" y1="${m.t}" y2="${H - m.b}" visibility="hidden"></line>
+      <text class="end-label" x="${x(tMax) + 8}" y="${y(last[1]) + 4}">${fmt.pct(last[1], 0)}</text>
+    </svg>`;
+
+    const svg = el.querySelector("svg");
+    const cross = svg.querySelector(".crosshair");
+    svg.addEventListener("pointermove", (e) => {
+      const rect = svg.getBoundingClientRect();
+      const t = Math.max(0, Math.min(tMax, (((e.clientX - rect.left) / rect.width) * W - m.l) / (W - m.l - m.r) * span));
+      const r = [...rows].reverse().find((row) => row[0] <= t) ?? rows[0];
+      cross.setAttribute("x1", x(t));
+      cross.setAttribute("x2", x(t));
+      cross.setAttribute("visibility", "visible");
+      showTooltip(
+        `<strong>Day ${Math.round(t)} after publication</strong><br>${fmt.pct(r[1], 0)} still online (95% CI ${fmt.pct(r[2], 0)}–${fmt.pct(r[3], 0)})<br>${fmt.int(r[4])} postings observed at the last step`,
+        e.clientX, e.clientY,
+      );
     });
     svg.addEventListener("pointerleave", () => {
       cross.setAttribute("visibility", "hidden");
