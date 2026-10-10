@@ -45,12 +45,14 @@ Rules for every phase:
 
 ## Phase 3 — Statistics
 
-- [ ] Bootstrap 95% confidence intervals (2000 resamples, fixed seed) for every median
+- [x] Bootstrap 95% confidence intervals (2000 resamples, fixed seed) for every median
       pay shown; shown as a subtle range ("€16.50 · 95% CI €15.40–17.60"); medians with
       a very wide CI or n<10 hidden (current n≥10 rule stays).
-- [ ] Posting lifetime from first_seen/last_seen: Kaplan–Meier curve (still-online
+- [x] Posting lifetime from first_seen/last_seen: Kaplan–Meier curve (still-online
       postings censored), median days online overall and by field; new chart in Trends.
-- [ ] Skill co-occurrence: for each skill, top co-occurring skills with lift.
+      Age is counted from the publication date with delayed entry (postings are only
+      observed from their first scan); Bundesagentur postings only.
+- [x] Skill co-occurrence: for each skill, top co-occurring skills with lift.
 
 ## Phase 4 — Product: skill gap + alerts
 

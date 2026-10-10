@@ -107,10 +107,11 @@ One row per Werkstudent posting ever seen.
 `build` loads `jobs.csv` into an in-memory SQLite database
 ([schema](radar/sql/schema.sql): `jobs`, link tables `job_skills` /
 `job_majors`, label tables) and runs one SQL file per output. Medians and
-quartiles come from a custom `percentile(value, q)` aggregate; top-N per group
-uses window functions.
+quartiles come from a custom `percentile(value, q)` aggregate, their confidence
+intervals from a `median_ci(value, bound)` aggregate; top-N per group uses
+window functions. The statistics live in [`radar/stats.py`](radar/stats.py).
 
-Two choices keep the numbers honest:
+Three choices keep the numbers honest:
 
 - **Pay counts each role once.** Some employers post the same role in dozens of
   cities (one had 97 copies, all at minimum wage). Pay figures use one posting
@@ -120,6 +121,27 @@ Two choices keep the numbers honest:
   employers. Each group also reports `pay_employers` and `top_employer_share`;
   headline comparisons ("best-paid city") skip groups where one employer supplies
   more than 35% of the sample.
+- **Medians come with their uncertainty.** Every median pay has a 95% confidence
+  interval from a percentile bootstrap (2,000 resamples with replacement, fixed
+  seed, so the same data gives the same interval). A median whose interval is
+  wider than a quarter of its value (e.g. €13.50–18.50 around €16) is hidden like
+  one with too few roles. The site computes the same intervals in the browser for
+  whatever the filters select ([`stats.js`](docs/assets/stats.js); a test checks it
+  against Python).
+
+Two more analyses:
+
+- **How long postings stay online** (`lifetimes.json`): a Kaplan–Meier curve of
+  the share of Bundesagentur postings still online by days since publication.
+  Postings are only observed from their first scan, so the estimate uses
+  delayed entry (a posting published 40 days before the first scan only counts
+  from day 40); postings still online are censored. The curve stops where fewer
+  than 30 postings are observed, and has a 95% band from Greenwood's formula.
+  It sharpens with every day of history.
+- **Skills asked for together** (`cooccurrence.json`, SQL self-join in
+  [`cooccurrence.sql`](radar/sql/cooccurrence.sql)): for each skill, the skills
+  with the highest lift, P(A and B) / (P(A)·P(B)), among pairs in at least 5
+  postings. Lift 3 means three times as often together as if they were unrelated.
 
 Outputs:
 
@@ -129,7 +151,9 @@ Outputs:
 | `docs/data/checker.json` | per posting: field, city, German level, pay, skills, role and employer ids. The site filters and aggregates these in the browser, so every chart reacts to the filters |
 | `docs/data/postings.json` | title, company, city and date for the same postings in the same order; loaded when the job list comes into view |
 | `docs/data/patterns.json` | the skill and study-programme rules converted for JavaScript, for analysing a CV in the browser (a test checks that Python and JavaScript find the same skills) |
-| `docs/data/history.json` | daily series built from `data/history.csv` |
+| `docs/data/history.json` | daily series built from `data/history.csv` (median pay with its 95% CI) |
+| `docs/data/lifetimes.json` | Kaplan–Meier curve of postings still online by days since publication, median days online overall and by field |
+| `docs/data/cooccurrence.json` | per skill, the skills most often asked for together, with lift and share |
 | `docs/data/og.png` | link preview image with today's numbers (shown by Telegram, WhatsApp, LinkedIn; also at the top of this README) |
 | `data/history.csv` | one row per day × metric (`total`, `category`, `city`, `skill`, `major`, `german`). Which postings were online on a given day can't be reconstructed later, so this is collected from day one. |
 
@@ -264,6 +288,7 @@ radar/skills.py    skill dictionary (German + English synonyms)
 radar/history.py   online stretches per posting -> data/history/, history.sqlite, timeline.json
 radar/checks.py    data-quality checks of the daily run (volume, API fields, pay range)
 radar/build.py     load jobs.csv into SQLite, run radar/sql/*.sql, write JSON
+radar/stats.py     bootstrap CIs for medians, Kaplan–Meier with delayed entry
 radar/og_image.py  link preview image with today's numbers
 radar/patterns.py  skill rules exported for the browser (CV analysis)
 radar/sql/         schema and one query per output
